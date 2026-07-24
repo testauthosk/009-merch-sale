@@ -54,12 +54,12 @@
   .hero-mini .lock .drop { font-size:10px; letter-spacing:.18em; color:var(--yellow); }
   .hero-edit { position:absolute; z-index:2; top:12px; right:12px; }
   /* product grid — mirrors the site catalog grid */
-  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border:1px solid var(--line); }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); border-left:1px solid var(--line); }
   @media (max-width:800px){ .grid { grid-template-columns:repeat(2,1fr); } }
-  .cell { position:relative; background:#0a0a0b; aspect-ratio:3/4.4; display:flex; flex-direction:column; cursor:pointer; }
+  .cell { position:relative; background:#0a0a0b; aspect-ratio:3/4.4; display:flex; flex-direction:column; cursor:pointer; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
   .cell.dragging { opacity:.35; }
-  .cell.over { outline:2px solid var(--yellow); outline-offset:-2px; }
-  .cell .ph { flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .cell.over { outline:2px solid var(--yellow); outline-offset:-2px; z-index:1; }
+  .cell .ph { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
   .cell .ph img { width:78%; height:78%; object-fit:contain; }
   .cell .cap { padding:8px 10px 12px; border-top:1px solid #1c1c1e; }
   .cell .cap b { display:block; font-size:11px; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -84,7 +84,10 @@
   .coll-edit { position:absolute; z-index:2; top:12px; right:12px; }
   .cat-bar { display:flex; gap:24px; padding:14px 2px; border-bottom:1px solid var(--line); margin-bottom:1px; flex-wrap:wrap; }
   .cat-bar span { color:var(--muted); text-transform:uppercase; font-size:12px; letter-spacing:.04em; }
-  .cat-bar span.active { color:#fff; }
+  .cat-bar span { cursor:pointer; }
+  .cat-bar span:hover { color:#cfcfcf; }
+  .cat-bar span.active { color:var(--yellow); }
+  .cat-count { opacity:.5; font-size:10px; }
   /* modal */
   .overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); display:flex; justify-content:center; align-items:flex-start; padding:36px 16px; overflow:auto; z-index:60; }
   .modal { background:var(--panel); border:1px solid var(--line); width:600px; max-width:100%; padding:26px; }
@@ -190,10 +193,10 @@ function cellHTML(p, firstImg){
 function gridHTML(products, firstImg, withAdd){
   return `<div class="grid">${products.map(p=>cellHTML(p,firstImg)).join("")}${withAdd?`<div class="cell add" data-add="1"><div class="plus">+</div><div>Add product</div></div>`:""}</div>`;
 }
-function wireGrid(gridEl, products){
+function wireGrid(gridEl, products, opts={}){
   gridEl.querySelectorAll(".cell[data-id]").forEach(el=> el.addEventListener("click",()=>openEditor(products.find(p=>p.id===el.dataset.id))));
-  const add=gridEl.querySelector("[data-add]"); if(add) add.addEventListener("click",()=>openEditor(null));
-  enableDrag(gridEl, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1}))); toast("Order saved"); }, ".cell[data-id]");
+  const add=gridEl.querySelector("[data-add]"); if(add) add.addEventListener("click",()=>openEditor(null, opts.addCategory));
+  if(opts.reorder!==false) enableDrag(gridEl, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1}))); toast("Order saved"); }, ".cell[data-id]");
 }
 // upload a settings image field (hero / collection1 / collection2)
 function wireImageUpload(btn, settingsId, field, after){
@@ -231,14 +234,21 @@ async function renderStore(){
   mirror.querySelectorAll(".grid").forEach(g=> wireGrid(g, products));
 }
 
-// CATALOG tab — mirror of the catalog page: category bar + full editable grid
+// CATALOG tab — mirror of the catalog page: working category filter + editable grid
+let CAT_ACTIVE = "all";
 async function renderCatalog(){
-  $("#view").innerHTML=`<div class="canvas"><p class="canvas-note">Your catalog page. Same visual as the site — click a cell to edit, drag to reorder, + to add.</p><div id="mirror">Loading…</div></div>`;
+  $("#view").innerHTML=`<div class="canvas"><p class="canvas-note">Your catalog page. Switch a category to manage it on its own — click a cell to edit, drag to reorder (in All), + to add to the current category.</p><div id="mirror">Loading…</div></div>`;
   const { products, firstImg } = await loadStore();
-  const cats=["All","Shorts","T-shirts","Hoodies & sweats","Denim"];
+  const cats=[["all","All"],["shorts","Shorts"],["t-shirts","T-shirts"],["hoodies","Hoodies & sweats"],["denim","Denim"]];
   const mirror=$("#mirror");
-  mirror.innerHTML=`<div class="cat-bar">${cats.map((c,i)=>`<span class="${i===0?"active":""}">${c}</span>`).join("")}</div>${gridHTML(products, firstImg, true)}`;
-  wireGrid(mirror.querySelector(".grid"), products);
+  const draw=()=>{
+    const active=CAT_ACTIVE;
+    const filtered = active==="all" ? products : products.filter(p=>p.category===active);
+    mirror.innerHTML=`<div class="cat-bar">${cats.map(([id,label])=>`<span data-cat="${id}" class="${active===id?"active":""}">${label} <span class="cat-count">${id==="all"?products.length:products.filter(p=>p.category===id).length}</span></span>`).join("")}</div>${gridHTML(filtered, firstImg, true)}`;
+    mirror.querySelectorAll("[data-cat]").forEach(s=> s.addEventListener("click",()=>{ CAT_ACTIVE=s.dataset.cat; draw(); }));
+    wireGrid(mirror.querySelector(".grid"), filtered, { reorder: active==="all", addCategory: active==="all"?null:active });
+  };
+  draw();
 }
 
 /* native drag-reorder over children matching sel */
@@ -258,7 +268,7 @@ function enableDrag(container,onDrop,sel){
 }
 
 /* ---------- product editor ---------- */
-async function openEditor(product){
+async function openEditor(product, defaultCat){
   const isNew=!product;
   let images=[]; if(!isNew) images=await pb.collection("product_images").getFullList({filter:`product="${product.id}"`,sort:"sort"});
   const sizes=(product?.sizes)||["S","M","L","XL"];
@@ -270,7 +280,7 @@ async function openEditor(product){
       <div><label>Subtitle<input id="f_sub" value="${esc(product?.subtitle||"")}"></label></div>
       <div><label>Price<input id="f_price" type="number" value="${product?.price??""}"></label></div>
       <div><label>Old price<input id="f_old" type="number" value="${product?.old_price??""}"></label></div>
-      <div><label>Category<select id="f_cat">${CATEGORIES.map(c=>`<option ${product?.category===c?"selected":""}>${c}</option>`).join("")}</select></div>
+      <div><label>Category<select id="f_cat">${CATEGORIES.map(c=>`<option ${(product?.category||defaultCat)===c?"selected":""}>${c}</option>`).join("")}</select></label></div>
       <div><label>Shown on site<select id="f_active"><option value="true" ${product?.active!==false?"selected":""}>Yes</option><option value="false" ${product?.active===false?"selected":""}>No</option></select></div>
     </div>
     <label>Sizes</label><div class="sizes">${SIZES.map(s=>`<label class="${sizes.includes(s)?"on":""}"><input type="checkbox" value="${s}" ${sizes.includes(s)?"checked":""}>${s}</label>`).join("")}</div>
