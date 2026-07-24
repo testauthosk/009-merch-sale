@@ -73,6 +73,18 @@
   .cell.add:hover { color:var(--yellow); border-color:var(--yellow); }
   .cell.add .plus { font-size:34px; line-height:1; }
   .cell.add div:last-child { font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-top:6px; }
+  /* collections + catalog bar */
+  .coll-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); }
+  @media (max-width:800px){ .coll-grid { grid-template-columns:1fr; } }
+  .coll-cell { position:relative; height:230px; background-size:cover; background-position:center; display:flex; align-items:flex-end; padding:20px; }
+  .coll-cell::after { content:""; position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,.65),transparent 60%); }
+  .coll-cell .coll-label { position:relative; z-index:1; }
+  .coll-cell .coll-label span { display:block; font-size:11px; color:#cfcfcf; text-transform:uppercase; letter-spacing:.08em; }
+  .coll-cell .coll-label b { font-size:16px; }
+  .coll-edit { position:absolute; z-index:2; top:12px; right:12px; }
+  .cat-bar { display:flex; gap:24px; padding:14px 2px; border-bottom:1px solid var(--line); margin-bottom:1px; flex-wrap:wrap; }
+  .cat-bar span { color:var(--muted); text-transform:uppercase; font-size:12px; letter-spacing:.04em; }
+  .cat-bar span.active { color:#fff; }
   /* modal */
   .overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); display:flex; justify-content:center; align-items:flex-start; padding:36px 16px; overflow:auto; z-index:60; }
   .modal { background:var(--panel); border:1px solid var(--line); width:600px; max-width:100%; padding:26px; }
@@ -142,14 +154,15 @@ function renderApp(){
   app.innerHTML = `<header class="bar">
     <img class="logo" src="${LOGO}" alt="009"><b class="yellow" style="letter-spacing:.1em;font-size:12px">STUDIO</b>
     <div class="tabs">
-      <button data-t="store" class="${TAB==="store"?"active":""}">Store</button>
+      <button data-t="store" class="${TAB==="store"?"active":""}">Home</button>
+      <button data-t="catalog" class="${TAB==="catalog"?"active":""}">Catalog</button>
       <button data-t="orders" class="${TAB==="orders"?"active":""}">Orders</button>
     </div><div class="spacer"></div>
     <button class="btn btn--ghost btn--sm" id="logout">Log out</button></header>
     <div id="view"></div>`;
   app.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{TAB=b.dataset.t;renderApp();}));
   $("#logout").addEventListener("click",()=>{pb.authStore.clear();renderLogin();});
-  if(TAB==="store") renderStore(); else renderOrders();
+  if(TAB==="store") renderStore(); else if(TAB==="catalog") renderCatalog(); else renderOrders();
 }
 
 /* ---------- store (visual mirror) ---------- */
@@ -158,45 +171,74 @@ async function getSettings(){
   if(list.length) return list[0];
   return await pb.collection("settings").create({});
 }
-
-async function renderStore(){
-  const view=$("#view");
-  view.innerHTML=`<div class="canvas"><p class="canvas-note">This is your store, laid out like the live site. Click any product to edit its card, drag to reorder, or change the hero photo.</p><div id="mirror">Loading…</div></div>`;
+async function loadStore(){
   const [settings, products, imgs] = await Promise.all([
     getSettings(),
     pb.collection("products").getFullList({sort:"sort"}),
     pb.collection("product_images").getFullList({sort:"sort"}),
   ]);
   const firstImg={}; for(const im of imgs){ if(im.image&&!firstImg[im.product]) firstImg[im.product]=fileUrl(im,im.image); }
-  const heroUrl = fileUrl(settings,settings.hero);
-  const mirror=$("#mirror");
-  mirror.innerHTML=`
-    <div class="sec-title">Hero <span class="spacer"></span></div>
-    <div class="hero-mini" style="background-image:url('${heroUrl}')">
-      <button class="btn btn--sm hero-edit" id="heroEdit">Change hero photo</button>
-      <div class="lock"><div class="cou">009 COUTURE</div><div class="banda">BANDA</div><div class="drop">1ST CAPSULE COLLECTION DROP</div></div>
-    </div>
-    <div class="sec-title">Products <span class="hint">· click to edit · drag to reorder</span><span class="spacer"></span></div>
-    <div class="grid" id="grid">
-      ${products.map(p=>`
-        <div class="cell" draggable="true" data-id="${p.id}">
-          <span class="badge ${p.active?"on":""}">${p.active?"live":"hidden"}</span>
-          <div class="ph"><img src="${firstImg[p.id]||""}" alt=""></div>
-          <div class="cap"><b>${esc(p.name)}</b><span>${esc(p.category)} · $${p.price}</span></div>
-          <div class="hoverbar"><span>Edit card</span></div>
-        </div>`).join("")}
-      <div class="cell add" id="addCell"><div class="plus">+</div><div>Add product</div></div>
-    </div>`;
-  // hero upload
-  $("#heroEdit").addEventListener("click", (e)=>{ e.stopPropagation();
+  return { settings, products, firstImg };
+}
+function cellHTML(p, firstImg){
+  return `<div class="cell" draggable="true" data-id="${p.id}">
+    <span class="badge ${p.active?"on":""}">${p.active?"live":"hidden"}</span>
+    <div class="ph"><img src="${firstImg[p.id]||""}" alt=""></div>
+    <div class="cap"><b>${esc(p.name)}</b><span>${esc(p.category)} · $${p.price}</span></div>
+    <div class="hoverbar"><span>Edit card</span></div></div>`;
+}
+function gridHTML(products, firstImg, withAdd){
+  return `<div class="grid">${products.map(p=>cellHTML(p,firstImg)).join("")}${withAdd?`<div class="cell add" data-add="1"><div class="plus">+</div><div>Add product</div></div>`:""}</div>`;
+}
+function wireGrid(gridEl, products){
+  gridEl.querySelectorAll(".cell[data-id]").forEach(el=> el.addEventListener("click",()=>openEditor(products.find(p=>p.id===el.dataset.id))));
+  const add=gridEl.querySelector("[data-add]"); if(add) add.addEventListener("click",()=>openEditor(null));
+  enableDrag(gridEl, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1}))); toast("Order saved"); }, ".cell[data-id]");
+}
+// upload a settings image field (hero / collection1 / collection2)
+function wireImageUpload(btn, settingsId, field, after){
+  btn.addEventListener("click",(e)=>{ e.stopPropagation();
     const f=document.createElement("input"); f.type="file"; f.accept="image/*";
-    f.onchange=async()=>{ if(!f.files[0])return; const fd=new FormData(); fd.append("hero",f.files[0]); await pb.collection("settings").update(settings.id,fd); toast("Hero updated"); renderStore(); };
+    f.onchange=async()=>{ if(!f.files[0])return; const fd=new FormData(); fd.append(field,f.files[0]); await pb.collection("settings").update(settingsId,fd); toast("Updated"); after(); };
     f.click();
   });
-  $("#addCell").addEventListener("click",()=>openEditor(null));
-  const grid=$("#grid");
-  grid.querySelectorAll(".cell[data-id]").forEach((el,i)=> el.addEventListener("click",()=>openEditor(products[i])));
-  enableDrag(grid, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1}))); toast("Order saved"); }, ".cell[data-id]");
+}
+
+// HOME tab — full mirror: hero + featured grid + collections + bestsellers grid
+async function renderStore(){
+  $("#view").innerHTML=`<div class="canvas"><p class="canvas-note">Your home page, laid out like the live site. Edit any block — hero, products, or collections.</p><div id="mirror">Loading…</div></div>`;
+  const { settings, products, firstImg } = await loadStore();
+  const heroUrl=fileUrl(settings,settings.hero), c1=fileUrl(settings,settings.collection1), c2=fileUrl(settings,settings.collection2);
+  const mirror=$("#mirror");
+  mirror.innerHTML=`
+    <div class="sec-title">Hero</div>
+    <div class="hero-mini" style="background-image:url('${heroUrl}')">
+      <button class="btn btn--sm hero-edit" data-set="hero">Change photo</button>
+      <div class="lock"><div class="cou">009 COUTURE</div><div class="banda">BANDA</div><div class="drop">1ST CAPSULE COLLECTION DROP</div></div>
+    </div>
+    <div class="sec-title">Featured products <span class="hint">· click to edit · drag to reorder</span></div>
+    ${gridHTML(products, firstImg, false)}
+    <div class="sec-title">Collections</div>
+    <div class="coll-grid">
+      <div class="coll-cell" style="background-image:url('${c1}')"><button class="btn btn--sm coll-edit" data-set="collection1">Change photo</button><div class="coll-label"><span>Bottoms</span><b>009 Shorts collection</b></div></div>
+      <div class="coll-cell" style="background-image:url('${c2}')"><button class="btn btn--sm coll-edit" data-set="collection2">Change photo</button><div class="coll-label"><span>Tops</span><b>009 T-shirts collection</b></div></div>
+    </div>
+    <div class="sec-title">Bestsellers <span class="hint">· same products, shared order</span></div>
+    ${gridHTML(products, firstImg, false)}`;
+  wireImageUpload(mirror.querySelector('[data-set="hero"]'), settings.id, "hero", renderStore);
+  wireImageUpload(mirror.querySelector('[data-set="collection1"]'), settings.id, "collection1", renderStore);
+  wireImageUpload(mirror.querySelector('[data-set="collection2"]'), settings.id, "collection2", renderStore);
+  mirror.querySelectorAll(".grid").forEach(g=> wireGrid(g, products));
+}
+
+// CATALOG tab — mirror of the catalog page: category bar + full editable grid
+async function renderCatalog(){
+  $("#view").innerHTML=`<div class="canvas"><p class="canvas-note">Your catalog page. Same visual as the site — click a cell to edit, drag to reorder, + to add.</p><div id="mirror">Loading…</div></div>`;
+  const { products, firstImg } = await loadStore();
+  const cats=["All","Shorts","T-shirts","Hoodies & sweats","Denim"];
+  const mirror=$("#mirror");
+  mirror.innerHTML=`<div class="cat-bar">${cats.map((c,i)=>`<span class="${i===0?"active":""}">${c}</span>`).join("")}</div>${gridHTML(products, firstImg, true)}`;
+  wireGrid(mirror.querySelector(".grid"), products);
 }
 
 /* native drag-reorder over children matching sel */
