@@ -4,71 +4,98 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex" />
-<title>009 Merch — Admin</title>
+<title>009 Merch — Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0b0b0c; --panel:#151517; --line:#2a2a2e; --muted:#8a8a90; --fg:#f2f2f3; --yellow:#ebcc00; --danger:#e2564d; }
+  :root { --bg:#000; --panel:#0e0e10; --line:#333; --muted:#7a7a7a; --fg:#f2f2f3; --yellow:#ebcc00; --danger:#e2564d; --mono:"Courier New",Courier,monospace; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 -apple-system,Segoe UI,Roboto,sans-serif; }
-  a { color:inherit; }
-  button { font:inherit; cursor:pointer; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:var(--mono); font-size:14px; }
+  button, input, select, textarea { font-family:var(--mono); }
+  button { cursor:pointer; }
   .hidden { display:none !important; }
+  .yellow { color:var(--yellow); }
   /* login */
   .login { min-height:100vh; display:flex; align-items:center; justify-content:center; }
-  .login form { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:28px; width:320px; }
-  .login h1 { margin:0 0 4px; font-size:20px; letter-spacing:.04em; }
-  .login p { margin:0 0 18px; color:var(--muted); font-size:12px; }
-  input, select, textarea { width:100%; background:#0e0e10; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:9px 11px; margin-top:6px; }
-  textarea { min-height:80px; resize:vertical; }
-  label { display:block; font-size:12px; color:var(--muted); margin-top:12px; }
-  .btn { background:var(--yellow); color:#000; border:0; border-radius:8px; padding:10px 16px; font-weight:600; letter-spacing:.02em; }
+  .login form { background:var(--panel); border:1px solid var(--line); padding:34px; width:340px; }
+  .login .logo { height:26px; margin-bottom:22px; }
+  .login h1 { margin:0 0 4px; font-size:15px; letter-spacing:.12em; text-transform:uppercase; }
+  .login p { margin:0 0 20px; color:var(--muted); font-size:12px; letter-spacing:.04em; }
+  input, select, textarea { width:100%; background:#000; border:1px solid var(--line); color:var(--fg); padding:10px 12px; margin-top:6px; }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:#fff; }
+  textarea { min-height:84px; resize:vertical; }
+  label { display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:14px; }
+  .btn { background:#fff; color:#000; border:0; padding:11px 18px; letter-spacing:.06em; text-transform:uppercase; font-size:12px; transition:background .16s; }
+  .btn:hover:not(:disabled) { background:var(--yellow); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
   .btn--ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .btn--ghost:hover { background:transparent; border-color:#fff; }
   .btn--danger { background:transparent; color:var(--danger); border:1px solid #4a2b2b; }
-  .btn--sm { padding:5px 10px; font-size:12px; }
-  .err { color:var(--danger); font-size:12px; margin-top:10px; min-height:16px; }
-  /* shell */
-  header.bar { display:flex; align-items:center; gap:20px; padding:0 20px; height:56px; border-bottom:1px solid var(--line); background:var(--panel); position:sticky; top:0; z-index:10; }
-  header.bar b { letter-spacing:.06em; }
-  .tabs { display:flex; gap:6px; margin-left:12px; }
-  .tabs button { background:transparent; border:0; color:var(--muted); padding:8px 12px; border-radius:7px; }
-  .tabs button.active { color:#000; background:var(--yellow); font-weight:600; }
+  .btn--sm { padding:6px 12px; font-size:11px; }
+  .err { color:var(--danger); font-size:12px; margin-top:12px; min-height:15px; }
+  /* header */
+  header.bar { display:flex; align-items:center; gap:22px; height:60px; padding:0 24px; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:20; background:#000; }
+  header.bar .logo { height:22px; }
+  .tabs { display:flex; gap:4px; }
+  .tabs button { background:transparent; border:0; color:var(--muted); padding:9px 14px; text-transform:uppercase; letter-spacing:.06em; font-size:12px; }
+  .tabs button.active { color:#000; background:var(--yellow); }
   .bar .spacer { flex:1; }
-  main { max-width:1000px; margin:0 auto; padding:22px 20px 80px; }
-  .row-actions { display:flex; gap:8px; }
-  h2.section { font-size:15px; letter-spacing:.04em; margin:4px 0 14px; display:flex; align-items:center; gap:12px; }
-  .hint { color:var(--muted); font-size:12px; font-weight:400; }
-  /* product list */
-  .plist { display:flex; flex-direction:column; gap:8px; }
-  .pcard { display:flex; align-items:center; gap:14px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
-  .pcard.dragging { opacity:.4; }
-  .pcard.over { border-color:var(--yellow); }
-  .grip { cursor:grab; color:var(--muted); font-size:18px; padding:0 4px; user-select:none; }
-  .thumb { width:52px; height:52px; border-radius:8px; object-fit:cover; background:#000; flex:0 0 auto; }
-  .pcard .meta { flex:1; min-width:0; }
-  .pcard .meta b { display:block; }
-  .pcard .meta span { color:var(--muted); font-size:12px; }
-  .pill { font-size:11px; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
-  .pill.on { color:var(--yellow); border-color:#4a4426; }
-  /* editor modal */
-  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; justify-content:center; align-items:flex-start; padding:40px 16px; overflow:auto; z-index:50; }
-  .modal { background:var(--panel); border:1px solid var(--line); border-radius:12px; width:560px; max-width:100%; padding:22px; }
-  .modal h3 { margin:0 0 12px; }
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  /* studio canvas — a scaled mirror of the site */
+  .canvas { max-width:1120px; margin:0 auto; padding:26px 24px 90px; }
+  .canvas-note { color:var(--muted); font-size:12px; letter-spacing:.04em; margin:0 0 16px; }
+  .sec-title { font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin:30px 0 12px; display:flex; align-items:center; gap:12px; }
+  .sec-title .spacer { flex:1; }
+  /* hero preview */
+  .hero-mini { position:relative; height:280px; border:1px solid var(--line); background-size:cover; background-position:center 32%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-bottom:34px; overflow:hidden; }
+  .hero-mini::after { content:""; position:absolute; inset:0; background:linear-gradient(to bottom,transparent 45%,rgba(0,0,0,.85)); }
+  .hero-mini .lock { position:relative; z-index:1; text-align:center; }
+  .hero-mini .lock .cou { font-size:12px; letter-spacing:.22em; }
+  .hero-mini .lock .banda { font-family:"UnifrakturCook",serif; font-size:46px; line-height:.9; margin:2px 0; }
+  .hero-mini .lock .drop { font-size:10px; letter-spacing:.18em; color:var(--yellow); }
+  .hero-edit { position:absolute; z-index:2; top:12px; right:12px; }
+  /* product grid — mirrors the site catalog grid */
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border:1px solid var(--line); }
+  @media (max-width:800px){ .grid { grid-template-columns:repeat(2,1fr); } }
+  .cell { position:relative; background:#0a0a0b; aspect-ratio:3/4.4; display:flex; flex-direction:column; cursor:pointer; }
+  .cell.dragging { opacity:.35; }
+  .cell.over { outline:2px solid var(--yellow); outline-offset:-2px; }
+  .cell .ph { flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .cell .ph img { width:78%; height:78%; object-fit:contain; }
+  .cell .cap { padding:8px 10px 12px; border-top:1px solid #1c1c1e; }
+  .cell .cap b { display:block; font-size:11px; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cell .cap span { color:var(--muted); font-size:11px; }
+  .cell .badge { position:absolute; top:8px; left:8px; font-size:9px; letter-spacing:.06em; padding:2px 7px; border:1px solid var(--line); color:var(--muted); background:rgba(0,0,0,.6); text-transform:uppercase; }
+  .cell .badge.on { color:var(--yellow); border-color:#4a4426; }
+  .cell .hoverbar { position:absolute; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .15s; }
+  .cell:hover .hoverbar { opacity:1; }
+  .cell .hoverbar span { background:var(--yellow); color:#000; padding:7px 14px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+  .cell.add { align-items:center; justify-content:center; color:var(--muted); border:1px dashed #444; background:#050506; }
+  .cell.add:hover { color:var(--yellow); border-color:var(--yellow); }
+  .cell.add .plus { font-size:34px; line-height:1; }
+  .cell.add div:last-child { font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-top:6px; }
+  /* modal */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.72); display:flex; justify-content:center; align-items:flex-start; padding:36px 16px; overflow:auto; z-index:60; }
+  .modal { background:var(--panel); border:1px solid var(--line); width:600px; max-width:100%; padding:26px; }
+  .modal h3 { margin:0 0 16px; font-size:14px; letter-spacing:.08em; text-transform:uppercase; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   .sizes { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
-  .sizes label { display:inline-flex; align-items:center; gap:5px; margin:0; color:var(--fg); border:1px solid var(--line); padding:6px 10px; border-radius:7px; }
+  .sizes label { display:inline-flex; align-items:center; gap:6px; margin:0; color:var(--fg); border:1px solid var(--line); padding:7px 11px; cursor:pointer; text-transform:none; letter-spacing:0; }
+  .sizes label.on { border-color:var(--yellow); color:var(--yellow); }
   .sizes input { width:auto; margin:0; }
   .imgs { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
-  .imgcell { position:relative; width:74px; height:74px; border:1px solid var(--line); border-radius:8px; overflow:hidden; cursor:grab; }
-  .imgcell.over { border-color:var(--yellow); }
-  .imgcell img { width:100%; height:100%; object-fit:cover; }
-  .imgcell button { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.7); color:#fff; border:0; border-radius:6px; width:20px; height:20px; line-height:1; }
-  .modal .foot { display:flex; justify-content:space-between; margin-top:20px; }
+  .imgcell { position:relative; width:78px; height:96px; border:1px solid var(--line); overflow:hidden; cursor:grab; background:#000; }
+  .imgcell.over { outline:2px solid var(--yellow); outline-offset:-2px; }
+  .imgcell img { width:100%; height:100%; object-fit:contain; }
+  .imgcell .del { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.75); color:#fff; border:0; width:20px; height:20px; line-height:1; }
+  .upl-btn { display:inline-block; margin-top:12px; border:1px dashed #444; padding:10px 16px; color:var(--muted); font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+  .modal .foot { display:flex; justify-content:space-between; margin-top:24px; }
+  .row-actions { display:flex; gap:10px; }
   /* orders */
   .otable { width:100%; border-collapse:collapse; }
-  .otable th, .otable td { text-align:left; padding:10px; border-bottom:1px solid var(--line); font-size:13px; vertical-align:top; }
-  .otable th { color:var(--muted); font-weight:500; }
-  .status { padding:4px 8px; border-radius:6px; }
+  .otable th,.otable td { text-align:left; padding:11px; border-bottom:1px solid var(--line); font-size:12px; vertical-align:top; }
+  .otable th { color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:400; }
   .muted { color:var(--muted); }
-  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--yellow); color:#000; padding:10px 18px; border-radius:8px; font-weight:600; z-index:100; opacity:0; transition:opacity .2s; }
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--yellow); color:#000; padding:11px 20px; letter-spacing:.04em; text-transform:uppercase; font-size:12px; z-index:200; opacity:0; transition:opacity .2s; }
   .toast.show { opacity:1; }
 </style>
 </head>
@@ -78,7 +105,6 @@
 
 <script type="module">
 import PocketBase from "https://esm.sh/pocketbase@0.26.2";
-
 const PB_URL = "https://009-merch-backend-production.up.railway.app";
 const pb = new PocketBase(PB_URL);
 pb.autoCancellation(false);
@@ -86,190 +112,177 @@ pb.autoCancellation(false);
 const CATEGORIES = ["hoodies","t-shirts","shorts","shirts","accessories","denim"];
 const SIZES = ["S","M","L","XL","XXL"];
 const STATUSES = ["pending","paid","processing","shipped","done","cancelled"];
+const LOGO = "../assets/store/brand-header.png";
 
-const $ = (s, r=document) => r.querySelector(s);
+const $ = (s,r=document)=>r.querySelector(s);
 const app = $("#app");
-const esc = (s) => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const fileUrl = (rec, name) => `${PB_URL}/api/files/${rec.collectionId}/${rec.id}/${name}`;
-function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
+const esc = (s)=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fileUrl = (rec,name)=>name?`${PB_URL}/api/files/${rec.collectionId}/${rec.id}/${name}`:"";
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
+let TAB="store";
 
-let TAB = "products";
-
-/* ---------------- login ---------------- */
-function renderLogin(errMsg=""){
-  app.innerHTML = `
-  <div class="login"><form id="loginForm">
-    <h1>009 · Admin</h1><p>Sign in to manage the store</p>
-    <label>Email<input id="email" type="email" autocomplete="username" required></label>
-    <label>Password<input id="pass" type="password" autocomplete="current-password" required></label>
-    <div class="err">${esc(errMsg)}</div>
-    <button class="btn" style="width:100%;margin-top:14px" type="submit">Sign in</button>
+/* ---------- login ---------- */
+function renderLogin(msg=""){
+  app.innerHTML = `<div class="login"><form id="lf">
+    <img class="logo" src="${LOGO}" alt="009">
+    <h1>Studio</h1><p>Manage the store visually</p>
+    <label>Email<input id="email" type="email" required></label>
+    <label>Password<input id="pass" type="password" required></label>
+    <div class="err">${esc(msg)}</div>
+    <button class="btn" style="width:100%;margin-top:16px" type="submit">Sign in</button>
   </form></div>`;
-  $("#loginForm").addEventListener("submit", async (e)=>{
-    e.preventDefault();
-    try {
-      await pb.collection("_superusers").authWithPassword($("#email").value.trim(), $("#pass").value);
-      renderApp();
-    } catch(err){ renderLogin("Wrong email or password"); }
+  $("#lf").addEventListener("submit", async e=>{ e.preventDefault();
+    try { await pb.collection("_superusers").authWithPassword($("#email").value.trim(),$("#pass").value); renderApp(); }
+    catch { renderLogin("Wrong email or password"); }
   });
 }
 
-/* ---------------- shell ---------------- */
+/* ---------- shell ---------- */
 function renderApp(){
-  app.innerHTML = `
-  <header class="bar">
-    <b>009 · ADMIN</b>
+  app.innerHTML = `<header class="bar">
+    <img class="logo" src="${LOGO}" alt="009"><b class="yellow" style="letter-spacing:.1em;font-size:12px">STUDIO</b>
     <div class="tabs">
-      <button data-tab="products" class="${TAB==="products"?"active":""}">Products</button>
-      <button data-tab="orders" class="${TAB==="orders"?"active":""}">Orders</button>
+      <button data-t="store" class="${TAB==="store"?"active":""}">Store</button>
+      <button data-t="orders" class="${TAB==="orders"?"active":""}">Orders</button>
+    </div><div class="spacer"></div>
+    <button class="btn btn--ghost btn--sm" id="logout">Log out</button></header>
+    <div id="view"></div>`;
+  app.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{TAB=b.dataset.t;renderApp();}));
+  $("#logout").addEventListener("click",()=>{pb.authStore.clear();renderLogin();});
+  if(TAB==="store") renderStore(); else renderOrders();
+}
+
+/* ---------- store (visual mirror) ---------- */
+async function getSettings(){
+  const list = await pb.collection("settings").getFullList();
+  if(list.length) return list[0];
+  return await pb.collection("settings").create({});
+}
+
+async function renderStore(){
+  const view=$("#view");
+  view.innerHTML=`<div class="canvas"><p class="canvas-note">This is your store, laid out like the live site. Click any product to edit its card, drag to reorder, or change the hero photo.</p><div id="mirror">Loading…</div></div>`;
+  const [settings, products, imgs] = await Promise.all([
+    getSettings(),
+    pb.collection("products").getFullList({sort:"sort"}),
+    pb.collection("product_images").getFullList({sort:"sort"}),
+  ]);
+  const firstImg={}; for(const im of imgs){ if(im.image&&!firstImg[im.product]) firstImg[im.product]=fileUrl(im,im.image); }
+  const heroUrl = fileUrl(settings,settings.hero);
+  const mirror=$("#mirror");
+  mirror.innerHTML=`
+    <div class="sec-title">Hero <span class="spacer"></span></div>
+    <div class="hero-mini" style="background-image:url('${heroUrl}')">
+      <button class="btn btn--sm hero-edit" id="heroEdit">Change hero photo</button>
+      <div class="lock"><div class="cou">009 COUTURE</div><div class="banda">BANDA</div><div class="drop">1ST CAPSULE COLLECTION DROP</div></div>
     </div>
-    <div class="spacer"></div>
-    <button class="btn btn--ghost btn--sm" id="logout">Log out</button>
-  </header>
-  <main id="view"></main>`;
-  app.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", ()=>{ TAB=b.dataset.tab; renderApp(); }));
-  $("#logout").addEventListener("click", ()=>{ pb.authStore.clear(); renderLogin(); });
-  if (TAB==="products") renderProducts(); else renderOrders();
-}
-
-/* ---------------- products ---------------- */
-async function renderProducts(){
-  const view = $("#view");
-  view.innerHTML = `<h2 class="section">Products <span class="hint">— drag to reorder</span>
-     <div class="spacer" style="flex:1"></div><button class="btn btn--sm" id="addP">+ Add product</button></h2>
-     <div class="plist" id="plist">Loading…</div>`;
-  $("#addP").addEventListener("click", ()=> openEditor(null));
-  const items = await pb.collection("products").getFullList({ sort:"sort" });
-  const imgs = await pb.collection("product_images").getFullList({ sort:"sort" });
-  const firstImg = {};
-  for (const im of imgs) if (im.image && !firstImg[im.product]) firstImg[im.product] = fileUrl(im, im.image);
-  const list = $("#plist");
-  list.innerHTML = items.map(p => `
-    <div class="pcard" draggable="true" data-id="${p.id}">
-      <span class="grip">⠿</span>
-      <img class="thumb" src="${firstImg[p.id]||""}" alt="">
-      <div class="meta"><b>${esc(p.name)}</b><span>${esc(p.subtitle)} · ${esc(p.category)} · $${p.price}</span></div>
-      <span class="pill ${p.active?"on":""}">${p.active?"active":"hidden"}</span>
-      <div class="row-actions"><button class="btn btn--ghost btn--sm edit">Edit</button></div>
-    </div>`).join("") || `<p class="muted">No products yet.</p>`;
-  list.querySelectorAll(".edit").forEach((b,i)=> b.addEventListener("click", ()=> openEditor(items[i])));
-  enableRowDrag(list, async (orderedIds)=>{
-    await Promise.all(orderedIds.map((id,idx)=> pb.collection("products").update(id, { sort: idx+1 })));
-    toast("Order saved");
+    <div class="sec-title">Products <span class="hint">· click to edit · drag to reorder</span><span class="spacer"></span></div>
+    <div class="grid" id="grid">
+      ${products.map(p=>`
+        <div class="cell" draggable="true" data-id="${p.id}">
+          <span class="badge ${p.active?"on":""}">${p.active?"live":"hidden"}</span>
+          <div class="ph"><img src="${firstImg[p.id]||""}" alt=""></div>
+          <div class="cap"><b>${esc(p.name)}</b><span>${esc(p.category)} · $${p.price}</span></div>
+          <div class="hoverbar"><span>Edit card</span></div>
+        </div>`).join("")}
+      <div class="cell add" id="addCell"><div class="plus">+</div><div>Add product</div></div>
+    </div>`;
+  // hero upload
+  $("#heroEdit").addEventListener("click", (e)=>{ e.stopPropagation();
+    const f=document.createElement("input"); f.type="file"; f.accept="image/*";
+    f.onchange=async()=>{ if(!f.files[0])return; const fd=new FormData(); fd.append("hero",f.files[0]); await pb.collection("settings").update(settings.id,fd); toast("Hero updated"); renderStore(); };
+    f.click();
   });
+  $("#addCell").addEventListener("click",()=>openEditor(null));
+  const grid=$("#grid");
+  grid.querySelectorAll(".cell[data-id]").forEach((el,i)=> el.addEventListener("click",()=>openEditor(products[i])));
+  enableDrag(grid, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1}))); toast("Order saved"); }, ".cell[data-id]");
 }
 
-/* generic native drag-reorder for direct children carrying data-id */
-function enableRowDrag(container, onDrop, itemSel="[data-id]"){
-  let dragEl=null;
-  container.querySelectorAll(itemSel).forEach(el=>{
-    el.addEventListener("dragstart", ()=>{ dragEl=el; el.classList.add("dragging"); });
-    el.addEventListener("dragend", ()=>{ el.classList.remove("dragging"); container.querySelectorAll(itemSel).forEach(x=>x.classList.remove("over")); });
-    el.addEventListener("dragover", (e)=>{ e.preventDefault(); if(el!==dragEl) el.classList.add("over"); });
-    el.addEventListener("dragleave", ()=> el.classList.remove("over"));
-    el.addEventListener("drop", (e)=>{
-      e.preventDefault(); el.classList.remove("over");
-      if(!dragEl||dragEl===el) return;
-      const items=[...container.querySelectorAll(itemSel)];
-      const from=items.indexOf(dragEl), to=items.indexOf(el);
-      if(from<to) el.after(dragEl); else el.before(dragEl);
-      onDrop([...container.querySelectorAll(itemSel)].map(x=>x.dataset.id));
+/* native drag-reorder over children matching sel */
+function enableDrag(container,onDrop,sel){
+  let drag=null;
+  container.querySelectorAll(sel).forEach(el=>{
+    el.addEventListener("dragstart",(e)=>{ drag=el; el.classList.add("dragging"); e.stopPropagation(); });
+    el.addEventListener("dragend",()=>{ el.classList.remove("dragging"); container.querySelectorAll(sel).forEach(x=>x.classList.remove("over")); });
+    el.addEventListener("dragover",(e)=>{ e.preventDefault(); if(el!==drag) el.classList.add("over"); });
+    el.addEventListener("dragleave",()=>el.classList.remove("over"));
+    el.addEventListener("drop",(e)=>{ e.preventDefault(); el.classList.remove("over"); if(!drag||drag===el)return;
+      const items=[...container.querySelectorAll(sel)]; const from=items.indexOf(drag),to=items.indexOf(el);
+      if(from<to) el.after(drag); else el.before(drag);
+      onDrop([...container.querySelectorAll(sel)].map(x=>x.dataset.id));
     });
   });
 }
 
-/* ---------------- product editor ---------------- */
+/* ---------- product editor ---------- */
 async function openEditor(product){
-  const isNew = !product;
-  let images = [];
-  if (!isNew) images = await pb.collection("product_images").getFullList({ filter:`product="${product.id}"`, sort:"sort" });
-  const sizes = (product?.sizes)||["S","M","L","XL"];
-  const ov = document.createElement("div"); ov.className="overlay";
-  ov.innerHTML = `<div class="modal">
-    <h3>${isNew?"New product":"Edit product"}</h3>
+  const isNew=!product;
+  let images=[]; if(!isNew) images=await pb.collection("product_images").getFullList({filter:`product="${product.id}"`,sort:"sort"});
+  const sizes=(product?.sizes)||["S","M","L","XL"];
+  const ov=document.createElement("div"); ov.className="overlay";
+  ov.innerHTML=`<div class="modal">
+    <h3>${isNew?"New product":"Edit product card"}</h3>
     <div class="grid2">
       <div><label>Name<input id="f_name" value="${esc(product?.name||"")}"></label></div>
       <div><label>Subtitle<input id="f_sub" value="${esc(product?.subtitle||"")}"></label></div>
       <div><label>Price<input id="f_price" type="number" value="${product?.price??""}"></label></div>
       <div><label>Old price<input id="f_old" type="number" value="${product?.old_price??""}"></label></div>
       <div><label>Category<select id="f_cat">${CATEGORIES.map(c=>`<option ${product?.category===c?"selected":""}>${c}</option>`).join("")}</select></div>
-      <div><label>Active<select id="f_active"><option value="true" ${product?.active!==false?"selected":""}>Yes</option><option value="false" ${product?.active===false?"selected":""}>No</option></select></label></div>
+      <div><label>Shown on site<select id="f_active"><option value="true" ${product?.active!==false?"selected":""}>Yes</option><option value="false" ${product?.active===false?"selected":""}>No</option></select></div>
     </div>
-    <label>Sizes</label><div class="sizes">${SIZES.map(s=>`<label><input type="checkbox" value="${s}" ${sizes.includes(s)?"checked":""}>${s}</label>`).join("")}</div>
+    <label>Sizes</label><div class="sizes">${SIZES.map(s=>`<label class="${sizes.includes(s)?"on":""}"><input type="checkbox" value="${s}" ${sizes.includes(s)?"checked":""}>${s}</label>`).join("")}</div>
     <label>Description<textarea id="f_desc">${esc(product?.description||"")}</textarea></label>
-    <label>Photos ${isNew?'<span class="hint">— save product first, then add photos</span>':'<span class="hint">— drag to reorder</span>'}</label>
-    <div class="imgs" id="imgs">${images.map(im=>`
-      <div class="imgcell" draggable="true" data-id="${im.id}"><img src="${fileUrl(im,im.image)}"><button data-del="${im.id}">×</button></div>`).join("")}</div>
-    ${isNew?"":'<input type="file" id="upl" accept="image/*" multiple style="margin-top:10px">'}
-    <div class="foot">
-      ${isNew?"<span></span>":'<button class="btn btn--danger btn--sm" id="delP">Delete product</button>'}
-      <div class="row-actions"><button class="btn btn--ghost" id="cancel">Cancel</button><button class="btn" id="save">Save</button></div>
-    </div>
-  </div>`;
+    <label>Photos ${isNew?'<span class="muted">— save first, then add</span>':'<span class="muted">— drag to reorder</span>'}</label>
+    <div class="imgs" id="imgs">${images.map(im=>`<div class="imgcell" draggable="true" data-id="${im.id}"><img src="${fileUrl(im,im.image)}"><button class="del" data-del="${im.id}">×</button></div>`).join("")}</div>
+    ${isNew?"":'<label class="upl-btn" for="upl">+ Add photos</label><input type="file" id="upl" accept="image/*" multiple class="hidden">'}
+    <div class="foot">${isNew?"<span></span>":'<button class="btn btn--danger btn--sm" id="delP">Delete</button>'}
+      <div class="row-actions"><button class="btn btn--ghost" id="cancel">Cancel</button><button class="btn" id="save">Save</button></div></div></div>`;
   document.body.appendChild(ov);
   const close=()=>ov.remove();
-  ov.addEventListener("mousedown", e=>{ if(e.target===ov) close(); });
-  $("#cancel",ov).addEventListener("click", close);
+  ov.addEventListener("mousedown",e=>{ if(e.target===ov) close(); });
+  $("#cancel",ov).addEventListener("click",close);
+  ov.querySelectorAll(".sizes label").forEach(l=>l.querySelector("input").addEventListener("change",()=>l.classList.toggle("on",l.querySelector("input").checked)));
 
-  $("#save",ov).addEventListener("click", async ()=>{
-    const data = {
-      name:$("#f_name",ov).value.trim(), subtitle:$("#f_sub",ov).value.trim(),
+  $("#save",ov).addEventListener("click", async()=>{
+    const data={ name:$("#f_name",ov).value.trim(), subtitle:$("#f_sub",ov).value.trim(),
       price:Number($("#f_price",ov).value)||0, old_price:Number($("#f_old",ov).value)||null,
-      category:$("#f_cat",ov).value, active:$("#f_active",ov).value==="true",
-      description:$("#f_desc",ov).value,
-      sizes:[...ov.querySelectorAll(".sizes input:checked")].map(i=>i.value),
-    };
+      category:$("#f_cat",ov).value, active:$("#f_active",ov).value==="true", description:$("#f_desc",ov).value,
+      sizes:[...ov.querySelectorAll(".sizes input:checked")].map(i=>i.value) };
     try {
-      if(isNew){ const cnt=(await pb.collection("products").getList(1,1)).totalItems; data.sort=cnt+1; await pb.collection("products").create(data); }
-      else await pb.collection("products").update(product.id, data);
-      close(); toast("Saved"); renderProducts();
+      if(isNew){ const c=(await pb.collection("products").getList(1,1)).totalItems; data.sort=c+1; await pb.collection("products").create(data); }
+      else await pb.collection("products").update(product.id,data);
+      close(); toast("Saved"); renderStore();
     } catch(err){ alert("Save failed: "+(err?.message||err)); }
   });
-
   if(!isNew){
-    $("#delP",ov).addEventListener("click", async ()=>{
-      if(!confirm("Delete this product and its photos?")) return;
-      await pb.collection("products").delete(product.id); close(); toast("Deleted"); renderProducts();
-    });
-    const imgWrap=$("#imgs",ov);
-    imgWrap.querySelectorAll("[data-del]").forEach(b=> b.addEventListener("click", async ()=>{
-      await pb.collection("product_images").delete(b.dataset.del); b.closest(".imgcell").remove(); toast("Photo removed");
-    }));
-    enableRowDrag(imgWrap, async (ids)=>{ await Promise.all(ids.map((id,idx)=> pb.collection("product_images").update(id,{sort:idx+1}))); toast("Photo order saved"); }, ".imgcell");
-    $("#upl",ov).addEventListener("change", async (e)=>{
-      const files=[...e.target.files]; const base=(await pb.collection("product_images").getList(1,1,{filter:`product="${product.id}"`})).totalItems;
+    $("#delP",ov).addEventListener("click", async()=>{ if(!confirm("Delete this product and its photos?"))return;
+      await pb.collection("products").delete(product.id); close(); toast("Deleted"); renderStore(); });
+    const iw=$("#imgs",ov);
+    iw.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", async()=>{ await pb.collection("product_images").delete(b.dataset.del); b.closest(".imgcell").remove(); toast("Photo removed"); }));
+    enableDrag(iw, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("product_images").update(id,{sort:idx+1}))); toast("Photo order saved"); }, ".imgcell");
+    $("#upl",ov).addEventListener("change", async(e)=>{ const files=[...e.target.files];
+      const base=(await pb.collection("product_images").getList(1,1,{filter:`product="${product.id}"`})).totalItems;
       for(let i=0;i<files.length;i++){ const fd=new FormData(); fd.append("product",product.id); fd.append("sort",base+i+1); fd.append("image",files[i]); await pb.collection("product_images").create(fd); }
-      toast("Photos uploaded"); openEditor(await pb.collection("products").getOne(product.id)); close();
-    });
+      toast("Photos uploaded"); close(); openEditor(await pb.collection("products").getOne(product.id)); });
   }
 }
 
-/* ---------------- orders ---------------- */
+/* ---------- orders ---------- */
 async function renderOrders(){
-  const view=$("#view");
-  view.innerHTML = `<h2 class="section">Orders</h2><div id="otable">Loading…</div>`;
-  const orders = await pb.collection("orders").getFullList({ sort:"-created" });
-  $("#otable").innerHTML = orders.length ? `<table class="otable">
-    <thead><tr><th>#</th><th>Items</th><th>Total</th><th>Customer</th><th>Status</th><th>Date</th></tr></thead>
-    <tbody>${orders.map(o=>{
-      const items=(Array.isArray(o.items)?o.items:[]).map(it=>`${esc(it.name||it.product||"item")} ${it.size?"("+esc(it.size)+")":""} ×${it.qty||it.quantity||1}`).join("<br>");
-      const cust=o.customer&&typeof o.customer==="object"?Object.values(o.customer).filter(Boolean).join(", "):"";
-      return `<tr>
-        <td><b>${esc(o.order_no||o.id.slice(0,6))}</b></td>
-        <td>${items||'<span class="muted">—</span>'}</td>
-        <td>${o.total?esc(o.currency||"$")+" "+o.total:'<span class="muted">—</span>'}</td>
-        <td>${esc(cust)||'<span class="muted">—</span>'}</td>
-        <td><select class="status" data-id="${o.id}">${STATUSES.map(s=>`<option ${o.status===s?"selected":""}>${s}</option>`).join("")}</select></td>
-        <td class="muted">${new Date(o.created).toLocaleString()}</td>
-      </tr>`;}).join("")}</tbody></table>`
-    : `<p class="muted">No orders yet.</p>`;
-  $("#otable").querySelectorAll(".status").forEach(sel=> sel.addEventListener("change", async ()=>{
-    await pb.collection("orders").update(sel.dataset.id,{status:sel.value}); toast("Status updated");
-  }));
+  $("#view").innerHTML=`<div class="canvas"><div class="sec-title">Orders</div><div id="ot">Loading…</div></div>`;
+  const orders=await pb.collection("orders").getFullList({sort:"-created"});
+  $("#ot").innerHTML= orders.length?`<table class="otable"><thead><tr><th>#</th><th>Items</th><th>Total</th><th>Customer</th><th>Status</th><th>Date</th></tr></thead><tbody>${orders.map(o=>{
+    const items=(Array.isArray(o.items)?o.items:[]).map(it=>`${esc(it.name||"item")} ${it.size?"("+esc(it.size)+")":""} ×${it.qty||1}`).join("<br>");
+    const c=o.customer&&typeof o.customer==="object"?[o.customer.name,o.customer.telegram,o.customer.phone,[o.customer.city,o.customer.country].filter(Boolean).join(" "),o.customer.address].filter(Boolean).join("<br>"):"";
+    return `<tr><td><b>${esc(o.order_no||o.id.slice(0,6))}</b></td><td>${items||'<span class="muted">—</span>'}</td>
+      <td>${o.total?esc(o.currency||"")+" "+o.total:'<span class="muted">—</span>'}</td><td>${c||'<span class="muted">—</span>'}</td>
+      <td><select data-id="${o.id}">${STATUSES.map(s=>`<option ${o.status===s?"selected":""}>${s}</option>`).join("")}</select></td>
+      <td class="muted">${new Date(o.created).toLocaleString()}</td></tr>`;}).join("")}</tbody></table>`:`<p class="muted">No orders yet.</p>`;
+  $("#ot").querySelectorAll("select").forEach(s=>s.addEventListener("change", async()=>{ await pb.collection("orders").update(s.dataset.id,{status:s.value}); toast("Status updated"); }));
 }
 
-/* ---------------- boot ---------------- */
-if (pb.authStore.isValid && pb.authStore.record) renderApp(); else renderLogin();
+if(pb.authStore.isValid && pb.authStore.record) renderApp(); else renderLogin();
 </script>
 </body>
 </html>
