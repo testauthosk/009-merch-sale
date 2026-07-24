@@ -7,6 +7,32 @@
     <meta name="description" content="009 Merch streetwear catalog" />
     <link rel="icon" href="./favicon.svg" />
     <title>009 Merch — Banda Collection</title>
+    <script>
+      /* GitHub Pages caches index.html ~10min; if a stale page booted with an
+         old bundle, fetch the live HTML and hard-refresh once to the newest build. */
+      (function () {
+        window.addEventListener("DOMContentLoaded", function () {
+          try {
+            var tag = document.querySelector('script[src*="/assets/index-"]');
+            var loaded = tag && (tag.getAttribute("src").match(/index-[\w-]+\.js/) || [])[0];
+            if (!loaded) return; /* dev server / no bundle */
+            fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" })
+              .then(function (r) { return r.text(); })
+              .then(function (html) {
+                var live = (html.match(/index-[\w-]+\.js/) || [])[0];
+                if (live && live !== loaded) {
+                  var key = "vseen_" + live;
+                  if (!sessionStorage.getItem(key)) {
+                    sessionStorage.setItem(key, "1");
+                    location.replace(location.pathname + "?v=" + live.replace(/index-|\.js/g, "") + location.hash);
+                  }
+                }
+              })
+              .catch(function () {});
+          } catch (e) {}
+        });
+      })();
+    </script>
     <script type="module" crossorigin src="./assets/index-BhyM1jeM.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-De9Lxu2n.css">
   </head>
