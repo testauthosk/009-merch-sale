@@ -185,12 +185,13 @@ function renderApp(){
       <button data-t="store" class="${TAB==="store"?"active":""}">Home</button>
       <button data-t="catalog" class="${TAB==="catalog"?"active":""}">Catalog</button>
       <button data-t="orders" class="${TAB==="orders"?"active":""}">Orders</button>
+      <button data-t="notify" class="${TAB==="notify"?"active":""}">Notify</button>
     </div><div class="spacer"></div>
     <button class="btn btn--ghost btn--sm" id="logout">Log out</button></header>
     <div id="view"></div>`;
   app.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{TAB=b.dataset.t;renderApp();}));
   $("#logout").addEventListener("click",()=>{pb.authStore.clear();renderLogin();});
-  if(TAB==="store") renderStore(); else if(TAB==="catalog") renderCatalog(); else renderOrders();
+  if(TAB==="store") renderStore(); else if(TAB==="catalog") renderCatalog(); else if(TAB==="notify") renderRecipients(); else renderOrders();
 }
 
 /* ---------- store (visual mirror) ---------- */
@@ -388,6 +389,49 @@ async function renderOrders(){
       sel.addEventListener("change",async()=>{ await pb.collection("orders").update(sel.dataset.id,{status:sel.value}); toast("Status updated"); renderOrders(); }); });
   };
   draw();
+}
+
+/* ---------- notify recipients (кто видит новые заказы в боте) ---------- */
+async function renderRecipients(){
+  $("#view").innerHTML=`<div class="canvas">
+    <div class="sec-title">Получатели заказов <span class="hint">· кому в бот падают новые заказы</span></div>
+    <div style="display:flex;gap:8px;max-width:440px;margin-top:6px">
+      <input id="rec-code" placeholder="Код из /start (напр. 4KDP7Q)" maxlength="12" autocomplete="off"
+        style="flex:1;background:#111;border:1px solid #333;color:#fff;padding:11px 13px;font-family:var(--mono,monospace);letter-spacing:.12em;text-transform:uppercase">
+      <button class="btn" id="rec-add-btn">Добавить</button>
+    </div>
+    <p class="muted" style="margin:12px 0 20px;font-size:12px;max-width:560px;line-height:1.5">
+      Человек пишет боту <b>/start</b> → бот выдаёт ему код → вставьте код сюда и нажмите «Добавить». После этого ему начнут приходить новые заказы. Управлять статусами он сможет прямо в боте.</p>
+    <div id="rw">Loading…</div></div>`;
+
+  const draw=async()=>{
+    const recs=await pb.collection("notify_recipients").getFullList({sort:"-created"});
+    $("#rw").innerHTML = recs.length ? recs.map(r=>`
+      <div class="rec-row" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid #222">
+        <span class="badge ${r.active?"on":""}">${r.active?"активен":"ожидает"}</span>
+        <b>${esc(r.name||"—")}</b>
+        <span class="muted" style="font-size:12px">id ${esc(r.chat_id)} · код ${esc(r.code)}</span>
+        <span class="spacer" style="flex:1"></span>
+        ${r.active
+          ? `<button class="btn btn--ghost btn--sm" data-off="${r.id}">Отключить</button>`
+          : `<button class="btn btn--sm" data-on="${r.id}">Включить</button>`}
+        <button class="btn btn--ghost btn--sm" data-del="${r.id}" title="Удалить">✕</button>
+      </div>`).join("")
+      : '<p class="muted" style="margin-top:14px">Пока нет получателей. Пусть человек напишет боту /start и передаст код.</p>';
+    $("#rw").querySelectorAll("[data-on]").forEach(b=>b.addEventListener("click",async()=>{await pb.collection("notify_recipients").update(b.dataset.on,{active:true});toast("Включён");draw();}));
+    $("#rw").querySelectorAll("[data-off]").forEach(b=>b.addEventListener("click",async()=>{await pb.collection("notify_recipients").update(b.dataset.off,{active:false});toast("Отключён");draw();}));
+    $("#rw").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{await pb.collection("notify_recipients").delete(b.dataset.del);toast("Удалён");draw();}));
+  };
+  await draw();
+
+  $("#rec-add-btn").addEventListener("click",async()=>{
+    const code=$("#rec-code").value.trim().toUpperCase();
+    if(!code) return;
+    const found=await pb.collection("notify_recipients").getList(1,1,{filter:`code="${code}"`});
+    if(!found.items.length){ toast("Код не найден — человек должен сначала написать боту /start"); return; }
+    await pb.collection("notify_recipients").update(found.items[0].id,{active:true});
+    $("#rec-code").value=""; toast("Получатель добавлен"); draw();
+  });
 }
 
 if(pb.authStore.isValid && pb.authStore.record) renderApp(); else renderLogin();
