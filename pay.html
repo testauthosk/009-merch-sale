@@ -3,293 +3,320 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Pay — 009 COUTURE</title>
+<title>Checkout — 009 COUTURE</title>
 <link rel="icon" href="./favicon.svg" />
 <style>
-  :root { --black:#000; --line:#333; --yellow:#ebcc00; --mono:"Courier New",Courier,monospace; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  html,body { height:100%; }
-  body {
-    background:#000; color:#fff; font-family:var(--mono);
+  :root{ --bg:#0a0a0a; --card:#151515; --surface:#1e1e1e; --surface2:#262626;
+    --line:#2c2c2c; --text:#f4f4f4; --muted:#8f8f8f; --yellow:#ebcc00; --green:#37d67a; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased; min-height:100dvh;
-    display:flex; flex-direction:column; align-items:center;
-    padding:28px 18px 40px; letter-spacing:.02em;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px 16px;
   }
-  a { color:inherit; }
-  .wrap { width:100%; max-width:440px; margin:auto 0; }
+  .wrap{ width:100%; max-width:452px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px 24px; }
 
-  .brand { display:flex; justify-content:center; margin-bottom:26px; }
-  .brand img { height:26px; width:auto; filter:brightness(0) invert(1); }
+  /* header */
+  .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+  .logo{ display:flex; align-items:baseline; gap:7px; font-weight:800; letter-spacing:.02em; }
+  .logo .nine{ font-size:19px; }
+  .logo .cout{ font-size:11px; letter-spacing:.34em; color:var(--muted); font-weight:600; text-transform:uppercase; }
+  .help{ width:30px;height:30px;border-radius:50%;border:1px solid var(--line);color:var(--muted);
+    display:grid;place-items:center;font-size:14px; }
 
-  .card { border:1px solid var(--line); border-radius:2px; background:#0a0a0a; }
-  .card + .card { margin-top:14px; }
-  .pad { padding:20px; }
+  /* amount */
+  .amount{ font-size:34px; font-weight:800; letter-spacing:-.01em; line-height:1; }
+  .amount span{ font-size:16px; font-weight:600; color:var(--muted); margin-left:6px; }
+  .meta{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .fee{ font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .fee svg{ width:14px;height:14px;stroke:var(--muted); }
+  .expire{ font-size:12.5px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:5px 12px; white-space:nowrap; }
+  .expire b{ color:var(--yellow); font-variant-numeric:tabular-nums; font-weight:700; }
 
-  .row { display:flex; justify-content:space-between; align-items:center; gap:12px; }
-  .muted { color:#8a8a8a; font-size:12px; text-transform:uppercase; letter-spacing:.14em; }
-  .val { font-size:14px; }
-  .big { font-size:26px; font-weight:700; letter-spacing:-.01em; }
-  .hr { height:1px; background:var(--line); margin:16px 0; }
+  .hr{ height:1px; background:var(--line); margin:22px 0; }
 
-  h1.step-title { font-size:13px; text-transform:uppercase; letter-spacing:.16em; color:#fff; margin-bottom:16px; }
-
-  /* currency grid */
-  .coins { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
-  .coin {
-    border:1px solid var(--line); background:transparent; color:#fff;
-    font-family:var(--mono); font-size:13px; padding:14px 12px; cursor:pointer;
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
-    transition:border-color .18s ease, background .18s ease, color .18s ease; border-radius:2px;
-    text-align:left;
+  /* labels + selects */
+  label.fld{ display:block; font-size:13px; color:var(--muted); font-weight:600; margin:0 0 9px; }
+  .fld + .field{ margin-bottom:18px; }
+  .select{ position:relative; }
+  .select-btn{
+    width:100%; height:56px; background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    display:flex; align-items:center; gap:12px; padding:0 16px; cursor:pointer; color:var(--text);
+    font-size:15.5px; font-family:inherit; transition:border-color .15s ease, background .15s ease; text-align:left;
   }
-  .coin b { font-weight:700; }
-  .coin small { color:#8a8a8a; font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
-  @media (hover:hover){ .coin:hover { border-color:var(--yellow); } }
-  .coin:active { transform:translateY(1px); }
+  .select-btn:disabled{ opacity:.45; cursor:not-allowed; }
+  @media (hover:hover){ .select-btn:not(:disabled):hover{ border-color:#3d3d3d; } }
+  .select.open .select-btn{ border-color:var(--yellow); }
+  .select-btn .ph{ color:#6f6f6f; }
+  .select-btn .chev{ margin-left:auto; width:18px;height:18px;stroke:var(--muted); transition:transform .2s ease; flex:none; }
+  .select.open .select-btn .chev{ transform:rotate(180deg); }
+  .tick{ width:30px;height:30px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;
+    font-size:11px;font-weight:800;letter-spacing:.02em;flex:none;color:var(--text); }
 
-  /* pay screen */
-  .qr-box { display:flex; justify-content:center; padding:16px; background:#fff; border-radius:2px; }
-  .qr-box img { width:210px; height:210px; display:block; image-rendering:pixelated; }
-  .amount-line { text-align:center; margin:18px 0 6px; }
-  .amount-line .big { color:var(--yellow); }
-  .net { text-align:center; color:#8a8a8a; font-size:11px; text-transform:uppercase; letter-spacing:.14em; }
-  .addr {
-    display:flex; align-items:center; gap:10px; margin-top:16px;
-    border:1px solid var(--line); border-radius:2px; padding:12px 12px 12px 14px;
+  .options{
+    position:absolute; left:0; right:0; top:calc(100% + 8px); z-index:20;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    max-height:296px; overflow-y:auto; box-shadow:0 24px 48px -18px rgba(0,0,0,.7);
+    opacity:0; transform:translateY(-6px); pointer-events:none; transition:opacity .16s ease, transform .16s ease;
   }
-  .addr code { flex:1; min-width:0; font-size:12px; word-break:break-all; line-height:1.5; color:#e8e8e8; }
-  .copy {
-    flex:none; border:1px solid var(--line); background:transparent; color:#fff;
-    font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em;
-    padding:8px 12px; cursor:pointer; border-radius:2px; transition:.16s;
-  }
-  @media (hover:hover){ .copy:hover { border-color:var(--yellow); color:var(--yellow); } }
-  .copy.done { border-color:var(--yellow); color:var(--yellow); }
+  .select.open .options{ opacity:1; transform:none; pointer-events:auto; }
+  .opt{ display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; font-size:15px; transition:background .12s; }
+  @media (hover:hover){ .opt:hover{ background:var(--surface2); } }
+  .opt .name{ font-weight:600; }
+  .opt .sub{ color:var(--muted); font-size:12.5px; margin-left:auto; }
 
-  .status {
-    display:flex; align-items:center; gap:12px; margin-top:16px;
-    border-top:1px solid var(--line); padding-top:16px;
+  .proceed{
+    width:100%; height:56px; border-radius:12px; border:0; margin-top:6px; cursor:pointer;
+    font-family:inherit; font-size:15.5px; font-weight:700; letter-spacing:.01em;
+    background:var(--surface2); color:#6f6f6f; transition:background .18s ease, color .18s ease, transform .1s;
   }
-  .dot { width:9px; height:9px; border-radius:50%; background:var(--yellow); flex:none; position:relative; }
-  .dot::after { content:""; position:absolute; inset:-5px; border-radius:50%; border:1px solid var(--yellow); animation:pulse 1.6s ease-out infinite; }
-  @keyframes pulse { 0%{transform:scale(.6);opacity:.9} 100%{transform:scale(1.7);opacity:0} }
-  .status.paid .dot { background:#3ecf6b; } .status.paid .dot::after { border-color:#3ecf6b; animation:none; }
-  .status .st-text { font-size:13px; }
-  .status .st-sub { color:#8a8a8a; font-size:11px; margin-top:3px; }
-  .timer { margin-left:auto; color:#8a8a8a; font-size:12px; font-variant-numeric:tabular-nums; }
+  .proceed.on{ background:var(--yellow); color:#000; }
+  .proceed.on:active{ transform:translateY(1px); }
 
-  .btn-back {
-    display:inline-flex; align-items:center; gap:8px; margin-top:22px;
-    color:#8a8a8a; font-size:12px; text-transform:uppercase; letter-spacing:.12em;
-    background:none; border:0; cursor:pointer; font-family:var(--mono);
-  }
-  @media (hover:hover){ .btn-back:hover { color:#fff; } }
+  /* ===== payment screen ===== */
+  .pay-head{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+  .pay-head .back{ background:none;border:0;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;padding:0 2px;font-family:inherit; }
+  @media(hover:hover){ .pay-head .back:hover{ color:var(--text);} }
+  .pay-head .t{ font-size:15px; font-weight:700; }
+  .pay-head .t small{ display:block; color:var(--muted); font-weight:500; font-size:12px; margin-top:2px; }
+  .qr{ background:#fff; border-radius:12px; padding:14px; width:196px; margin:2px auto 0; }
+  .qr img{ width:168px;height:168px;display:block; }
+  .send{ text-align:center; margin:18px 0 4px; }
+  .send .lbl{ font-size:12.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
+  .send .amt{ font-size:26px; font-weight:800; color:var(--yellow); margin-top:5px; word-break:break-all; }
+  .send .net{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .addr{ display:flex; align-items:center; gap:10px; margin-top:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 12px 12px 15px; }
+  .addr code{ flex:1; min-width:0; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13px; word-break:break-all; line-height:1.5; color:var(--text); }
+  .copy{ flex:none; border:1px solid var(--line); background:var(--surface2); color:var(--text); font-family:inherit; font-size:12.5px; font-weight:600; padding:9px 14px; border-radius:9px; cursor:pointer; transition:.15s; }
+  @media(hover:hover){ .copy:hover{ border-color:var(--yellow); color:var(--yellow); } }
+  .copy.done{ border-color:var(--green); color:var(--green); }
+  .status{ display:flex; align-items:center; gap:12px; margin-top:16px; border-top:1px solid var(--line); padding-top:16px; }
+  .dot{ width:10px;height:10px;border-radius:50%;background:var(--yellow);flex:none;position:relative; }
+  .dot::after{ content:"";position:absolute;inset:-6px;border-radius:50%;border:1.5px solid var(--yellow);animation:pulse 1.6s ease-out infinite; }
+  @keyframes pulse{ 0%{transform:scale(.55);opacity:.9} 100%{transform:scale(1.7);opacity:0} }
+  .status.paid .dot{ background:var(--green); } .status.paid .dot::after{ border-color:var(--green); animation:none; }
+  .status .st1{ font-size:14px; font-weight:600; } .status .st2{ font-size:12px; color:var(--muted); margin-top:2px; }
 
-  .success { text-align:center; padding:38px 20px; }
-  .success .check { width:64px; height:64px; margin:0 auto 20px; border-radius:50%; border:2px solid #3ecf6b; display:grid; place-items:center; }
-  .success .check svg { width:30px; height:30px; stroke:#3ecf6b; }
-  .success h2 { font-size:20px; letter-spacing:.02em; margin-bottom:8px; }
-  .success p { color:#8a8a8a; font-size:13px; line-height:1.6; }
-  .success .num { color:var(--yellow); }
-  .shop-link {
-    display:inline-block; margin-top:24px; border:1px solid var(--line);
-    padding:12px 24px; font-size:12px; text-transform:uppercase; letter-spacing:.12em; border-radius:2px;
-    transition:.16s; text-decoration:none;
-  }
-  @media (hover:hover){ .shop-link:hover { border-color:var(--yellow); color:var(--yellow); } }
+  /* success */
+  .success{ text-align:center; padding:26px 6px 8px; }
+  .success .chk{ width:68px;height:68px;margin:0 auto 20px;border-radius:50%;border:2px solid var(--green);display:grid;place-items:center; }
+  .success .chk svg{ width:32px;height:32px;stroke:var(--green); }
+  .success h2{ font-size:21px; margin-bottom:8px; }
+  .success p{ color:var(--muted); font-size:14px; line-height:1.6; }
+  .success .num{ color:var(--yellow); font-weight:700; }
+  .shopbtn{ display:inline-block;margin-top:22px;background:var(--yellow);color:#000;font-weight:700;font-size:14px;padding:13px 28px;border-radius:11px;text-decoration:none; }
 
-  .center-msg { text-align:center; color:#8a8a8a; font-size:13px; padding:40px 0; }
-  .spin { width:26px;height:26px;border:2px solid #333;border-top-color:var(--yellow);border-radius:50%;animation:sp 0.8s linear infinite;margin:0 auto 14px; }
-  @keyframes sp { to { transform:rotate(360deg); } }
-  .hidden { display:none !important; }
-  .err { color:#ff6b6b; }
-  .foot { text-align:center; color:#5a5a5a; font-size:10px; letter-spacing:.1em; margin-top:26px; text-transform:uppercase; }
+  .center{ text-align:center; color:var(--muted); font-size:14px; padding:44px 0; }
+  .spin{ width:30px;height:30px;border:2.5px solid var(--surface2);border-top-color:var(--yellow);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 16px; }
+  @keyframes sp{ to{ transform:rotate(360deg);} }
+  .err{ color:#ff6b6b; }
+  .hidden{ display:none !important; }
+  .foot{ text-align:center; color:#5c5c5c; font-size:11.5px; margin-top:20px; }
+  .foot a{ color:#7a7a7a; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="brand"><img src="./assets/store/brand-header.png" alt="009 COUTURE" onerror="this.style.display='none'" /></div>
 
-  <div id="loading" class="center-msg"><div class="spin"></div>Loading your order…</div>
+  <div id="loading" class="card"><div class="center"><div class="spin"></div>Loading your order…</div></div>
 
-  <!-- order + currency -->
-  <div id="pick" class="hidden">
-    <div class="card pad">
-      <div class="row"><span class="muted">Order</span><span class="val" id="ord-no">—</span></div>
-      <div class="hr"></div>
-      <div class="row"><span class="muted">Total</span><span class="big" id="ord-total">—</span></div>
+  <!-- SELECT -->
+  <div id="pick" class="card hidden">
+    <div class="top">
+      <div class="logo"><span class="nine">009</span><span class="cout">Couture</span></div>
+      <div class="help">?</div>
     </div>
-    <div class="card pad" style="margin-top:14px;">
-      <h1 class="step-title">Pay with crypto — choose a coin</h1>
-      <div class="coins" id="coins"></div>
+    <div class="amount" id="amount">—</div>
+    <div class="meta">
+      <span class="fee"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>You pay the network fee</span>
+      <span class="expire">Expires in <b id="expire">60:00</b></span>
     </div>
-    <button class="btn-back" onclick="goShop()">← Back to store</button>
+    <div class="hr"></div>
+
+    <label class="fld">Currency</label>
+    <div class="field select" id="curSel">
+      <button class="select-btn" id="curBtn" type="button">
+        <span class="tick" id="curTick" style="display:none"></span>
+        <span id="curLabel" class="ph">Select currency</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="options" id="curOpts"></div>
+    </div>
+
+    <label class="fld">Network</label>
+    <div class="field select" id="netSel">
+      <button class="select-btn" id="netBtn" type="button" disabled>
+        <span id="netLabel" class="ph">Select network</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="options" id="netOpts"></div>
+    </div>
+
+    <button class="proceed" id="proceed" disabled>Proceed to the payment</button>
+    <div class="foot">Secured crypto checkout · <a href="./#/">009 COUTURE</a></div>
   </div>
 
-  <!-- payment -->
-  <div id="pay" class="hidden">
-    <div class="card pad">
-      <div class="qr-box"><img id="qr" alt="payment QR" /></div>
-      <div class="amount-line">
-        <div class="muted">Send exactly</div>
-        <div class="big" id="pay-amount">—</div>
-      </div>
+  <!-- PAYMENT -->
+  <div id="pay" class="card hidden">
+    <div class="pay-head">
+      <button class="back" onclick="backToPick()">←</button>
+      <div class="t">Complete payment<small id="pay-order">—</small></div>
+      <span class="expire" style="margin-left:auto">Expires in <b id="expire2">60:00</b></span>
+    </div>
+    <div class="qr"><img id="qr" alt="payment QR" /></div>
+    <div class="send">
+      <div class="lbl">Send exactly</div>
+      <div class="amt" id="pay-amount">—</div>
       <div class="net" id="pay-net">—</div>
-      <div class="addr">
-        <code id="pay-addr">—</code>
-        <button class="copy" id="copyBtn" onclick="copyAddr()">Copy</button>
-      </div>
-      <div class="status" id="status">
-        <span class="dot"></span>
-        <div>
-          <div class="st-text" id="st-text">Waiting for payment…</div>
-          <div class="st-sub" id="st-sub">Send the exact amount to the address above.</div>
-        </div>
-        <span class="timer" id="timer"></span>
-      </div>
     </div>
-    <button class="btn-back" onclick="resetPick()">← Choose another coin</button>
-  </div>
-
-  <!-- success -->
-  <div id="done" class="hidden">
-    <div class="card">
-      <div class="success">
-        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
-        <h2>Payment received</h2>
-        <p>Thank you. Your order <span class="num" id="done-no">—</span> is paid and confirmed.<br/>We'll be in touch shortly.</p>
-        <a class="shop-link" href="./#/">Back to store</a>
-      </div>
+    <div class="addr">
+      <code id="pay-addr">—</code>
+      <button class="copy" id="copyBtn" onclick="copyAddr()">Copy</button>
+    </div>
+    <div class="status" id="status">
+      <span class="dot"></span>
+      <div><div class="st1" id="st1">Waiting for your payment…</div><div class="st2" id="st2">Send the exact amount to the address above.</div></div>
     </div>
   </div>
 
-  <div id="fail" class="center-msg err hidden">Couldn't load this payment. <br/><a href="./#/" style="text-decoration:underline">Return to store</a></div>
+  <!-- SUCCESS -->
+  <div id="done" class="card hidden">
+    <div class="success">
+      <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
+      <h2>Payment received</h2>
+      <p>Thank you. Order <span class="num" id="done-no">—</span> is paid and confirmed.<br/>We'll be in touch shortly.</p>
+      <a class="shopbtn" href="./#/">Back to store</a>
+    </div>
+  </div>
 
-  <div class="foot">Secured crypto checkout · 009 COUTURE</div>
+  <div id="fail" class="card hidden"><div class="center err">Couldn't load this payment.<br/><a href="./#/" style="color:#7a7a7a;text-decoration:underline">Return to store</a></div></div>
+
 </div>
 
 <script>
 const BE = "https://009-merch-backend-production.up.railway.app";
 const BASE = location.pathname.replace(/\/pay\.html$/, "/");
-const params = new URLSearchParams(location.search);
-const ORDER = params.get("order") || "";
+const ORDER = new URLSearchParams(location.search).get("order") || "";
 
-const COINS = [
-  { code:"usdttrc20", label:"USDT", net:"TRC-20 · cheap fees" },
-  { code:"usdterc20", label:"USDT", net:"ERC-20" },
-  { code:"btc",       label:"BTC",  net:"Bitcoin" },
-  { code:"eth",       label:"ETH",  net:"Ethereum" },
-  { code:"trx",       label:"TRX",  net:"Tron" },
-  { code:"ltc",       label:"LTC",  net:"Litecoin" },
-  { code:"bnbbsc",    label:"BNB",  net:"BSC" },
-  { code:"sol",       label:"SOL",  net:"Solana" },
+// currency -> networks (label + NOWPayments code)
+const CURRENCIES = [
+  { t:"USDT", name:"Tether",   nets:[["TRC-20 (Tron)","usdttrc20"],["ERC-20 (Ethereum)","usdterc20"],["BEP-20 (BNB Chain)","usdtbsc"],["Solana","usdtsol"]] },
+  { t:"USDC", name:"USD Coin", nets:[["ERC-20 (Ethereum)","usdcerc20"],["Solana","usdcsol"],["BEP-20 (BNB Chain)","usdcbsc"]] },
+  { t:"BTC",  name:"Bitcoin",  nets:[["Bitcoin","btc"]] },
+  { t:"ETH",  name:"Ethereum", nets:[["Ethereum","eth"]] },
+  { t:"BNB",  name:"BNB",      nets:[["BNB Smart Chain","bnbbsc"]] },
+  { t:"TRX",  name:"Tron",     nets:[["Tron","trx"]] },
+  { t:"SOL",  name:"Solana",   nets:[["Solana","sol"]] },
+  { t:"LTC",  name:"Litecoin", nets:[["Litecoin","ltc"]] },
+  { t:"TON",  name:"Toncoin",  nets:[["TON","ton"]] },
+  { t:"DOGE", name:"Dogecoin", nets:[["Dogecoin","doge"]] },
 ];
 
-let order = null, poll = null, expiry = null, tick = null, payAddress = "";
-
-const $ = (id) => document.getElementById(id);
+let order=null, curPick=null, netCode=null, poll=null, tick=null, expiry=null, payAddress="";
+const $=(id)=>document.getElementById(id);
 function show(id){ ["loading","pick","pay","done","fail"].forEach(x=>$(x).classList.toggle("hidden", x!==id)); }
-function goShop(){ location.href = BASE + "#/"; }
+async function jget(u){ const r=await fetch(u); if(!r.ok) throw 0; return r.json(); }
 
-async function j(url, opts){ const r = await fetch(url, opts); if(!r.ok) throw new Error(r.status); return r.json(); }
-
-async function loadOrder(){
+async function init(){
   if(!ORDER){ show("fail"); return; }
-  try {
-    order = await j(`${BE}/api/shop/order/${encodeURIComponent(ORDER)}`);
-    if(order.status === "paid"){ $("done-no").textContent = ORDER; show("done"); return; }
-    $("ord-no").textContent = "#" + (order.order_no || ORDER);
-    const cur = order.currency || "USD";
-    const sym = cur === "EUR" ? "€" : cur === "GBP" ? "£" : "$";
-    $("ord-total").textContent = sym + Number(order.total || 0).toLocaleString();
-    renderCoins();
+  try{
+    order = await jget(`${BE}/api/shop/order/${encodeURIComponent(ORDER)}`);
+    if(order.status==="paid"){ $("done-no").textContent="#"+ORDER; show("done"); return; }
+    const cur=order.currency||"USD"; const sym=cur==="EUR"?"€":cur==="GBP"?"£":"$";
+    $("amount").innerHTML = `${sym}${Number(order.total||0).toLocaleString()}<span>${cur}</span>`;
+    $("pay-order").textContent = "Order #"+(order.order_no||ORDER);
+    buildCurrencies();
+    startTimer(60*60);
     show("pick");
-  } catch(e){ show("fail"); }
+  }catch(e){ show("fail"); }
 }
 
-function renderCoins(){
-  $("coins").innerHTML = "";
-  COINS.forEach(c => {
-    const b = document.createElement("button");
-    b.className = "coin";
-    b.innerHTML = `<span><b>${c.label}</b><br><small>${c.net}</small></span><span style="color:#8a8a8a">→</span>`;
-    b.onclick = () => createPayment(c.code);
-    $("coins").appendChild(b);
-  });
+function buildCurrencies(){
+  $("curOpts").innerHTML = CURRENCIES.map((c,i)=>
+    `<div class="opt" data-i="${i}"><span class="tick">${c.t.slice(0,4)}</span><span class="name">${c.t}</span><span class="sub">${c.name}</span></div>`).join("");
+  $("curOpts").querySelectorAll(".opt").forEach(o=>o.onclick=()=>pickCurrency(+o.dataset.i));
+}
+function pickCurrency(i){
+  curPick=CURRENCIES[i]; netCode=null;
+  $("curTick").style.display="grid"; $("curTick").textContent=curPick.t.slice(0,4);
+  $("curLabel").textContent=curPick.t; $("curLabel").classList.remove("ph");
+  closeAll();
+  // network
+  $("netBtn").disabled=false;
+  $("netLabel").textContent="Select network"; $("netLabel").classList.add("ph");
+  $("netOpts").innerHTML = curPick.nets.map((n,k)=>`<div class="opt" data-k="${k}"><span class="name">${n[0]}</span></div>`).join("");
+  $("netOpts").querySelectorAll(".opt").forEach(o=>o.onclick=()=>pickNet(+o.dataset.k));
+  // auto-select if single network
+  if(curPick.nets.length===1){ pickNet(0); }
+  updateProceed();
+}
+function pickNet(k){
+  netCode=curPick.nets[k][1];
+  $("netLabel").textContent=curPick.nets[k][0]; $("netLabel").classList.remove("ph");
+  closeAll(); updateProceed();
+}
+function updateProceed(){
+  const ok=!!(curPick && netCode);
+  $("proceed").disabled=!ok; $("proceed").classList.toggle("on",ok);
 }
 
-async function createPayment(pay_currency){
-  show("loading"); $("loading").querySelector(".center-msg,div") ;
-  $("loading").innerHTML = '<div class="spin"></div>Preparing payment…';
-  try {
-    const p = await j(`${BE}/api/shop/payment`, {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ order: ORDER, pay_currency })
-    });
-    if(p.error){ throw new Error(p.error); }
-    payAddress = p.pay_address;
-    $("qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=210x210&margin=0&data=${encodeURIComponent(payAddress)}`;
-    $("pay-amount").textContent = `${p.pay_amount} ${(p.pay_currency||pay_currency).toUpperCase()}`;
-    $("pay-net").textContent = (COINS.find(c=>c.code===pay_currency)?.net) || (p.network||"");
-    $("pay-addr").textContent = payAddress;
-    show("pay");
-    startExpiry(p.expiration_estimate_date);
-    startPoll();
-  } catch(e){
-    $("loading").innerHTML = '<div class="err">Could not start payment. <br/>Try another coin.</div><button class="btn-back" onclick="loadOrder()" style="margin-top:14px">← Back</button>';
+function closeAll(){ $("curSel").classList.remove("open"); $("netSel").classList.remove("open"); }
+$("curBtn").onclick=(e)=>{ e.stopPropagation(); const o=$("curSel").classList.contains("open"); closeAll(); if(!o)$("curSel").classList.add("open"); };
+$("netBtn").onclick=(e)=>{ e.stopPropagation(); if($("netBtn").disabled)return; const o=$("netSel").classList.contains("open"); closeAll(); if(!o)$("netSel").classList.add("open"); };
+document.addEventListener("click",closeAll);
+
+$("proceed").onclick=async ()=>{
+  if($("proceed").disabled) return;
+  show("loading"); $("loading").innerHTML='<div class="center"><div class="spin"></div>Preparing your payment…</div>';
+  try{
+    const p=await fetch(`${BE}/api/shop/payment`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({order:ORDER,pay_currency:netCode})}).then(r=>r.json());
+    if(p.error || !p.pay_address){ throw new Error(p.error||"failed"); }
+    payAddress=p.pay_address;
+    $("qr").src=`https://api.qrserver.com/v1/create-qr-code/?size=168x168&margin=0&data=${encodeURIComponent(payAddress)}`;
+    $("pay-amount").textContent=`${p.pay_amount} ${(p.pay_currency||netCode).toUpperCase()}`;
+    $("pay-net").textContent=$("netLabel").textContent;
+    $("pay-addr").textContent=payAddress;
+    if(p.expiration_estimate_date) startTimer(Math.max(60,Math.floor((new Date(p.expiration_estimate_date).getTime()-Date.now())/1000)));
+    show("pay"); startPoll();
+  }catch(e){
+    $("loading").innerHTML=`<div class="center err">Couldn't start payment${curPick?` in ${curPick.t}`:''}.<br/>Try another coin or network.</div>`;
+    setTimeout(()=>show("pick"),1800);
   }
-}
+};
 
-function copyAddr(){
-  navigator.clipboard?.writeText(payAddress);
-  const b = $("copyBtn"); b.textContent = "Copied"; b.classList.add("done");
-  setTimeout(()=>{ b.textContent="Copy"; b.classList.remove("done"); }, 1600);
-}
+function copyAddr(){ navigator.clipboard?.writeText(payAddress); const b=$("copyBtn"); b.textContent="Copied ✓"; b.classList.add("done"); setTimeout(()=>{b.textContent="Copy";b.classList.remove("done");},1600); }
 
-function startExpiry(dateStr){
-  clearInterval(tick);
-  expiry = dateStr ? new Date(dateStr).getTime() : Date.now() + 20*60*1000;
-  tick = setInterval(()=>{
-    const s = Math.max(0, Math.floor((expiry - Date.now())/1000));
-    const m = String(Math.floor(s/60)).padStart(2,"0"), ss = String(s%60).padStart(2,"0");
-    $("timer").textContent = s>0 ? `${m}:${ss}` : "expired";
-    if(s<=0) clearInterval(tick);
-  }, 1000);
+function startTimer(secs){
+  clearInterval(tick); expiry=Date.now()+secs*1000;
+  const upd=()=>{ const s=Math.max(0,Math.floor((expiry-Date.now())/1000)); const t=`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; $("expire").textContent=t; $("expire2").textContent=t; if(s<=0)clearInterval(tick); };
+  upd(); tick=setInterval(upd,1000);
 }
-
 function setStatus(state){
-  const map = {
-    waiting:   ["Waiting for payment…","Send the exact amount to the address above."],
-    confirming:["Payment detected — confirming…","This can take a few minutes on the network."],
-    paid:      ["Payment received ✓","Redirecting…"],
-  };
-  const [t,s] = map[state] || map.waiting;
-  $("st-text").textContent = t; $("st-sub").textContent = s;
-  $("status").classList.toggle("paid", state==="paid");
+  const m={ waiting:["Waiting for your payment…","Send the exact amount to the address above."],
+    confirming:["Payment detected — confirming…","This can take a few minutes on-chain."],
+    paid:["Payment received ✓","Finishing up…"] };
+  const [a,b]=m[state]||m.waiting; $("st1").textContent=a; $("st2").textContent=b; $("status").classList.toggle("paid",state==="paid");
 }
-
 function startPoll(){
   clearInterval(poll);
-  poll = setInterval(async ()=>{
-    try {
-      const st = await j(`${BE}/api/shop/payment-status/${encodeURIComponent(ORDER)}`);
-      const ps = (st.payment_status||"").toLowerCase();
-      const os = (st.status||"").toLowerCase();
-      if(os === "paid" || ps === "finished" || ps === "confirmed"){
-        setStatus("paid"); clearInterval(poll); clearInterval(tick);
-        setTimeout(()=>{ $("done-no").textContent = "#" + (order.order_no||ORDER); show("done"); }, 1400);
-      } else if(["confirming","sending","partially_paid"].includes(ps)){
-        setStatus("confirming");
-      } else {
-        setStatus("waiting");
-      }
-    } catch(e){ /* keep polling */ }
-  }, 6000);
+  poll=setInterval(async()=>{
+    try{
+      const st=await jget(`${BE}/api/shop/payment-status/${encodeURIComponent(ORDER)}`);
+      const ps=(st.payment_status||"").toLowerCase(), os=(st.status||"").toLowerCase();
+      if(os==="paid"||ps==="finished"||ps==="confirmed"){ setStatus("paid"); clearInterval(poll); clearInterval(tick);
+        setTimeout(()=>{ $("done-no").textContent="#"+(order.order_no||ORDER); show("done"); },1400); }
+      else if(["confirming","sending","partially_paid"].includes(ps)) setStatus("confirming");
+      else setStatus("waiting");
+    }catch(e){}
+  },6000);
 }
+function backToPick(){ clearInterval(poll); show("pick"); }
 
-function resetPick(){ clearInterval(poll); clearInterval(tick); show("pick"); }
-
-loadOrder();
+init();
 </script>
 </body>
 </html>
