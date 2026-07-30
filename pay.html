@@ -6,27 +6,24 @@
 <title>Checkout — 009 COUTURE</title>
 <link rel="icon" href="./favicon.svg" />
 <style>
-  :root{ --bg:#0a0a0a; --card:#151515; --surface:#1e1e1e; --surface2:#262626;
+  :root{ --bg:#eef0f3; --card:#141414; --surface:#1e1e1e; --surface2:#262626;
     --line:#2c2c2c; --text:#f4f4f4; --muted:#8f8f8f; --yellow:#ebcc00; --green:#37d67a; }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html,body{ height:100%; }
   body{
-    background:var(--bg); color:var(--text);
+    background:var(--bg);
+    background-image:radial-gradient(1200px 600px at 50% -8%, #ffffff 0%, #eef0f3 60%, #e6e8ec 100%);
+    color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased; min-height:100dvh;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    padding:24px 16px;
+    padding:28px 16px;
   }
   .wrap{ width:100%; max-width:452px; }
-  .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px 24px; }
-
-  /* header */
-  .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
-  .logo{ display:flex; align-items:baseline; gap:7px; font-weight:800; letter-spacing:.02em; }
-  .logo .nine{ font-size:19px; }
-  .logo .cout{ font-size:11px; letter-spacing:.34em; color:var(--muted); font-weight:600; text-transform:uppercase; }
-  .help{ width:30px;height:30px;border-radius:50%;border:1px solid var(--line);color:var(--muted);
-    display:grid;place-items:center;font-size:14px; }
+  .brand{ display:flex; justify-content:center; margin:0 0 22px; }
+  .brand img{ height:30px; width:auto; display:block; }
+  .card{ background:var(--card); border:1px solid rgba(0,0,0,.06); border-radius:18px; padding:26px 24px;
+    box-shadow:0 34px 70px -28px rgba(20,20,20,.42), 0 4px 14px rgba(20,20,20,.08); }
 
   /* amount */
   .amount{ font-size:34px; font-weight:800; letter-spacing:-.01em; line-height:1; }
@@ -55,14 +52,22 @@
   .select-btn .chev{ margin-left:auto; width:18px;height:18px;stroke:var(--muted); transition:transform .2s ease; flex:none; }
   .select.open .select-btn .chev{ transform:rotate(180deg); }
   .tick{ width:30px;height:30px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;
-    font-size:11px;font-weight:800;letter-spacing:.02em;flex:none;color:var(--text); }
+    font-size:10px;font-weight:800;letter-spacing:.01em;flex:none;color:var(--text);
+    position:relative; overflow:hidden; }
+  .tick img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 
   .options{
     position:absolute; left:0; right:0; top:calc(100% + 8px); z-index:20;
-    background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;
-    max-height:296px; overflow-y:auto; box-shadow:0 24px 48px -18px rgba(0,0,0,.7);
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    max-height:296px; overflow-y:auto; overflow-x:hidden; box-shadow:0 24px 48px -18px rgba(0,0,0,.7);
     opacity:0; transform:translateY(-6px); pointer-events:none; transition:opacity .16s ease, transform .16s ease;
+    scrollbar-width:thin; scrollbar-color:#3d3d3d transparent;
   }
+  .options::-webkit-scrollbar{ width:10px; }
+  .options::-webkit-scrollbar-track{ background:transparent; }
+  .options::-webkit-scrollbar-thumb{ background:#3a3a3a; border-radius:99px; border:3px solid var(--surface);
+    background-clip:padding-box; }
+  .options::-webkit-scrollbar-thumb:hover{ background:#525252; border:3px solid var(--surface); background-clip:padding-box; }
   .select.open .options{ opacity:1; transform:none; pointer-events:auto; }
   .opt{ display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; font-size:15px; transition:background .12s; }
   @media (hover:hover){ .opt:hover{ background:var(--surface2); } }
@@ -122,14 +127,12 @@
 <body>
 <div class="wrap">
 
+  <div class="brand"><img src="./assets/store/brand-header.png" alt="009 MERCH" /></div>
+
   <div id="loading" class="card"><div class="center"><div class="spin"></div>Loading your order…</div></div>
 
   <!-- SELECT -->
   <div id="pick" class="card hidden">
-    <div class="top">
-      <div class="logo"><span class="nine">009</span><span class="cout">Couture</span></div>
-      <div class="help">?</div>
-    </div>
     <div class="amount" id="amount">—</div>
     <div class="meta">
       <span class="fee"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>You pay the network fee</span>
@@ -150,6 +153,7 @@
     <label class="fld">Network</label>
     <div class="field select" id="netSel">
       <button class="select-btn" id="netBtn" type="button" disabled>
+        <span class="tick" id="netTick" style="display:none"></span>
         <span id="netLabel" class="ph">Select network</span>
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
       </button>
@@ -199,22 +203,27 @@
 
 <script>
 const BE = "https://009-merch-backend-production.up.railway.app";
-const BASE = location.pathname.replace(/\/pay\.html$/, "/");
+const ICON = (c)=>`https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.18.1/svg/color/${c}.svg`;
 const ORDER = new URLSearchParams(location.search).get("order") || "";
 
-// currency -> networks (label + NOWPayments code)
+// currency -> networks [ label, NOWPayments code, icon ticker ]
 const CURRENCIES = [
-  { t:"USDT", name:"Tether",   nets:[["TRC-20 (Tron)","usdttrc20"],["ERC-20 (Ethereum)","usdterc20"],["BEP-20 (BNB Chain)","usdtbsc"],["Solana","usdtsol"]] },
-  { t:"USDC", name:"USD Coin", nets:[["ERC-20 (Ethereum)","usdcerc20"],["Solana","usdcsol"],["BEP-20 (BNB Chain)","usdcbsc"]] },
-  { t:"BTC",  name:"Bitcoin",  nets:[["Bitcoin","btc"]] },
-  { t:"ETH",  name:"Ethereum", nets:[["Ethereum","eth"]] },
-  { t:"BNB",  name:"BNB",      nets:[["BNB Smart Chain","bnbbsc"]] },
-  { t:"TRX",  name:"Tron",     nets:[["Tron","trx"]] },
-  { t:"SOL",  name:"Solana",   nets:[["Solana","sol"]] },
-  { t:"LTC",  name:"Litecoin", nets:[["Litecoin","ltc"]] },
-  { t:"TON",  name:"Toncoin",  nets:[["TON","ton"]] },
-  { t:"DOGE", name:"Dogecoin", nets:[["Dogecoin","doge"]] },
+  { t:"USDT", name:"Tether",   ico:"usdt", nets:[["TRC-20 (Tron)","usdttrc20","trx"],["ERC-20 (Ethereum)","usdterc20","eth"],["BEP-20 (BNB Chain)","usdtbsc","bnb"],["Solana","usdtsol","sol"]] },
+  { t:"USDC", name:"USD Coin", ico:"usdc", nets:[["ERC-20 (Ethereum)","usdcerc20","eth"],["Solana","usdcsol","sol"],["BEP-20 (BNB Chain)","usdcbsc","bnb"]] },
+  { t:"BTC",  name:"Bitcoin",  ico:"btc",  nets:[["Bitcoin","btc","btc"]] },
+  { t:"ETH",  name:"Ethereum", ico:"eth",  nets:[["Ethereum","eth","eth"]] },
+  { t:"BNB",  name:"BNB",      ico:"bnb",  nets:[["BNB Smart Chain","bnbbsc","bnb"]] },
+  { t:"TRX",  name:"Tron",     ico:"trx",  nets:[["Tron","trx","trx"]] },
+  { t:"SOL",  name:"Solana",   ico:"sol",  nets:[["Solana","sol","sol"]] },
+  { t:"LTC",  name:"Litecoin", ico:"ltc",  nets:[["Litecoin","ltc","ltc"]] },
+  { t:"TON",  name:"Toncoin",  ico:"ton",  nets:[["TON","ton","ton"]] },
+  { t:"DOGE", name:"Dogecoin", ico:"doge", nets:[["Dogecoin","doge","doge"]] },
 ];
+
+// coin/network chip: colored icon on top, short text badge behind as fallback
+function chip(text, code){
+  return `<span class="tick" style="display:grid">${(text||"").slice(0,4)}<img src="${ICON(code)}" alt="" onerror="this.remove()"></span>`;
+}
 
 let order=null, curPick=null, netCode=null, poll=null, tick=null, expiry=null, payAddress="";
 const $=(id)=>document.getElementById(id);
@@ -237,26 +246,28 @@ async function init(){
 
 function buildCurrencies(){
   $("curOpts").innerHTML = CURRENCIES.map((c,i)=>
-    `<div class="opt" data-i="${i}"><span class="tick">${c.t.slice(0,4)}</span><span class="name">${c.t}</span><span class="sub">${c.name}</span></div>`).join("");
+    `<div class="opt" data-i="${i}">${chip(c.t,c.ico)}<span class="name">${c.t}</span><span class="sub">${c.name}</span></div>`).join("");
   $("curOpts").querySelectorAll(".opt").forEach(o=>o.onclick=()=>pickCurrency(+o.dataset.i));
 }
 function pickCurrency(i){
   curPick=CURRENCIES[i]; netCode=null;
-  $("curTick").style.display="grid"; $("curTick").textContent=curPick.t.slice(0,4);
+  $("curTick").style.display="grid"; $("curTick").innerHTML=`${curPick.t.slice(0,4)}<img src="${ICON(curPick.ico)}" alt="" onerror="this.remove()">`;
   $("curLabel").textContent=curPick.t; $("curLabel").classList.remove("ph");
   closeAll();
   // network
   $("netBtn").disabled=false;
+  $("netTick").style.display="none"; $("netTick").innerHTML="";
   $("netLabel").textContent="Select network"; $("netLabel").classList.add("ph");
-  $("netOpts").innerHTML = curPick.nets.map((n,k)=>`<div class="opt" data-k="${k}"><span class="name">${n[0]}</span></div>`).join("");
+  $("netOpts").innerHTML = curPick.nets.map((n,k)=>`<div class="opt" data-k="${k}">${chip(n[0],n[2])}<span class="name">${n[0]}</span></div>`).join("");
   $("netOpts").querySelectorAll(".opt").forEach(o=>o.onclick=()=>pickNet(+o.dataset.k));
   // auto-select if single network
   if(curPick.nets.length===1){ pickNet(0); }
   updateProceed();
 }
 function pickNet(k){
-  netCode=curPick.nets[k][1];
-  $("netLabel").textContent=curPick.nets[k][0]; $("netLabel").classList.remove("ph");
+  const n=curPick.nets[k]; netCode=n[1];
+  $("netTick").style.display="grid"; $("netTick").innerHTML=`${n[0].slice(0,4)}<img src="${ICON(n[2])}" alt="" onerror="this.remove()">`;
+  $("netLabel").textContent=n[0]; $("netLabel").classList.remove("ph");
   closeAll(); updateProceed();
 }
 function updateProceed(){
