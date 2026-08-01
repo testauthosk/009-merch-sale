@@ -132,6 +132,24 @@
   .amt-copy{ padding:6px 12px; font-size:12px; }
   .txlink{ display:inline-block; margin-top:7px; font-size:12px; font-weight:700; color:var(--yellow); text-decoration:none; letter-spacing:.01em; }
   @media(hover:hover){ .txlink:hover{ text-decoration:underline; } }
+  /* payment details dropdown */
+  .pdrop{ margin-top:16px; border-top:1px solid var(--line); padding-top:16px; opacity:0; transform:translateY(8px); transition:opacity .38s ease, transform .38s ease; }
+  .pdrop.show{ opacity:1; transform:none; }
+  .pdrop-head{ width:100%; display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:13px 15px; cursor:pointer; color:var(--text); font-family:inherit; text-align:left; }
+  .pdrop-dot{ width:9px;height:9px;border-radius:50%;background:#5aa0ff;flex:none;position:relative; }
+  .pdrop:not(.paid) .pdrop-dot::after{ content:"";position:absolute;inset:-5px;border-radius:50%;border:1.5px solid #5aa0ff;animation:pulse 1.6s ease-out infinite; }
+  .pdrop.paid .pdrop-dot{ background:var(--green); }
+  .pdrop-title{ font-size:13.5px; font-weight:600; flex:1; }
+  .pdrop-hint{ font-size:11.5px; color:var(--muted); }
+  .pdrop-chev{ width:12px;height:8px;color:var(--muted);transition:transform .3s ease;flex:none; }
+  .pdrop.open .pdrop-chev{ transform:rotate(180deg); }
+  .pdrop-clip{ height:0; overflow:hidden; transition:height .36s cubic-bezier(.65,0,.35,1); }
+  .pdrop-body{ padding:6px 4px 2px; }
+  .pd-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12.5px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+  .pd-row:last-of-type{ border-bottom:0; }
+  .pd-row span{ color:var(--muted); } .pd-row b{ font-weight:600; }
+  .pd-row.col{ flex-direction:column; align-items:flex-start; gap:6px; }
+  .pd-row.col code{ font-family:ui-monospace,Menlo,monospace; font-size:11.5px; word-break:break-all; color:var(--text); cursor:pointer; line-height:1.5; }
 
   /* success */
   .success{ text-align:center; padding:26px 6px 8px; }
@@ -233,7 +251,22 @@
       </div>
       <div class="status" id="status">
         <span class="dot"></span>
-        <div style="flex:1;min-width:0"><div class="st1" id="st1">Waiting for your payment…</div><div class="st2" id="st2">Send the exact amount to the address above.</div><a class="txlink hidden" id="txlink" target="_blank" rel="noopener">Track confirmations ↗</a></div>
+        <div style="flex:1;min-width:0"><div class="st1" id="st1">Waiting for your payment…</div><div class="st2" id="st2">Send the exact amount to the address above.</div></div>
+      </div>
+      <div class="pdrop hidden" id="pdrop">
+        <button class="pdrop-head" id="pdropHead" type="button" onclick="toggleDrop()">
+          <span class="pdrop-dot" id="pdropDot"></span>
+          <span class="pdrop-title" id="pdropTitle">Payment detected — confirming…</span>
+          <span class="pdrop-hint">details</span>
+          <svg class="pdrop-chev" viewBox="0 0 12 8"><path d="M1 2l5 4 5-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="pdrop-clip" id="pdropClip"><div class="pdrop-body">
+          <div class="pd-row"><span>Status</span><b id="pd-status">—</b></div>
+          <div class="pd-row"><span>Network</span><b id="pd-net">—</b></div>
+          <div class="pd-row"><span>Amount</span><b id="pd-amt">—</b></div>
+          <div class="pd-row col"><span>Transaction hash <em id="pd-hint" style="color:var(--muted);font-style:normal">tap to copy</em></span><code id="pd-hash" onclick="copyHash()">detecting…</code></div>
+          <a class="txlink" id="pd-explorer" target="_blank" rel="noopener" style="display:none">Track confirmations on explorer ↗</a>
+        </div></div>
       </div>
     </div>
 
@@ -374,17 +407,26 @@ function startTimer(secs){
   upd(); tick=setInterval(upd,1000);
 }
 function setStatus(state, hash, cur){
-  const m={ waiting:["Waiting for your payment…","Send the exact amount to the address above."],
-    confirming:["Payment detected — confirming on-chain…","Usually a few minutes. Track it live below."],
-    paid:["Payment confirmed ✓","Your payment is complete."] };
-  const [a,b]=m[state]||m.waiting; $("st1").textContent=a; $("st2").textContent=b;
-  const S=$("status"); S.classList.toggle("paid",state==="paid"); S.classList.toggle("confirming",state==="confirming");
-  const tl=$("txlink"), url=explorerUrl(cur,hash);
-  if(hash){
-    $("st2").textContent = b + "  ·  " + shortHash(hash);
-    if(url){ tl.href=url; tl.textContent = state==="paid" ? "View transaction ↗" : "Track confirmations ↗"; tl.classList.remove("hidden"); }
-  } else { tl.classList.add("hidden"); }
+  const S=$("status"), D=$("pdrop");
+  if(state==="waiting"){
+    S.classList.remove("hidden"); D.classList.remove("show","open","paid"); D.classList.add("hidden"); $("pdropClip").style.height="0px";
+    return;
+  }
+  const paid = state==="paid";
+  S.classList.add("hidden");
+  if(D.classList.contains("hidden")){ D.classList.remove("hidden"); requestAnimationFrame(()=>D.classList.add("show")); }
+  D.classList.toggle("paid",paid);
+  $("pdropTitle").textContent = paid ? "Payment confirmed" : "Payment detected — confirming…";
+  $("pd-status").textContent = paid ? "Confirmed" : "Confirming on-chain";
+  $("pd-net").textContent = ($("pay-net").textContent||"").trim() || (cur||"").toUpperCase();
+  $("pd-amt").textContent = ($("pay-amount").textContent||"").trim();
+  const url=explorerUrl(cur,hash), ex=$("pd-explorer"), hEl=$("pd-hash"), hint=$("pd-hint");
+  if(hash){ hEl.textContent=hash; if(hint)hint.style.display=""; if(url){ ex.href=url; ex.style.display="inline-block"; } else ex.style.display="none"; }
+  else { hEl.textContent="detecting…"; if(hint)hint.style.display="none"; ex.style.display="none"; }
+  if(D.classList.contains("open")) $("pdropClip").style.height=$("pdropClip").scrollHeight+"px";
 }
+function toggleDrop(){ const D=$("pdrop"), c=$("pdropClip"); const open=D.classList.toggle("open"); c.style.height = open ? c.scrollHeight+"px" : "0px"; }
+function copyHash(){ const h=($("pd-hash").textContent||""); if(h.length>20){ navigator.clipboard?.writeText(h); const hint=$("pd-hint"); if(hint){ const t=hint.textContent; hint.textContent="copied ✓"; setTimeout(()=>{hint.textContent=t;},1500);} } }
 function startPoll(){
   clearInterval(poll);
   poll=setInterval(async()=>{
