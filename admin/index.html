@@ -158,6 +158,17 @@ const $ = (s,r=document)=>r.querySelector(s);
 const app = $("#app");
 const esc = (s)=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fileUrl = (rec,name)=>name?`${PB_URL}/api/files/${rec.collectionId}/${rec.id}/${name}`:"";
+// Cloudinary: product photos live on the client's Cloudinary, one folder per product.
+const CLD_CLOUD="gibcvoti", CLD_PRESET="009_products";
+const slugify=s=>((s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||"product");
+const folderFor=p=>p.cloud_folder||`009/products/${slugify(p.name)}-${(p.id||"").slice(0,6)}`;
+const imgSrc=im=>im.url||fileUrl(im,im.image);
+async function cldUpload(file, folder){
+  const fd=new FormData(); fd.append("file",file); fd.append("upload_preset",CLD_PRESET); fd.append("asset_folder",folder);
+  const r=await fetch(`https://api.cloudinary.com/v1_1/${CLD_CLOUD}/image/upload`,{method:"POST",body:fd}).then(r=>r.json());
+  if(!r.secure_url) throw new Error(r.error?.message||"Cloudinary upload failed");
+  return {url:r.secure_url, public_id:r.public_id};
+}
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
 let TAB="store";
 
@@ -206,7 +217,7 @@ async function loadStore(){
     pb.collection("products").getFullList({sort:"sort"}),
     pb.collection("product_images").getFullList({sort:"sort"}),
   ]);
-  const firstImg={}; for(const im of imgs){ if(im.image&&!firstImg[im.product]) firstImg[im.product]=fileUrl(im,im.image); }
+  const firstImg={}; for(const im of imgs){ if(!firstImg[im.product]&&(im.url||im.image)) firstImg[im.product]=imgSrc(im); }
   return { settings, products, firstImg };
 }
 function cellHTML(p, firstImg){
@@ -312,7 +323,7 @@ async function openEditor(product, defaultCat){
     <label>Sizes</label><div class="sizes">${SIZES.map(s=>`<label class="${sizes.includes(s)?"on":""}"><input type="checkbox" value="${s}" ${sizes.includes(s)?"checked":""}>${s}</label>`).join("")}</div>
     <label>Description<textarea id="f_desc">${esc(product?.description||"")}</textarea></label>
     <label>Photos ${isNew?'<span class="muted">— save first, then add</span>':'<span class="muted">— drag to reorder</span>'}</label>
-    <div class="imgs" id="imgs">${images.map(im=>`<div class="imgcell" draggable="true" data-id="${im.id}"><img src="${fileUrl(im,im.image)}"><button class="del" data-del="${im.id}">×</button></div>`).join("")}</div>
+    <div class="imgs" id="imgs">${images.map(im=>`<div class="imgcell" draggable="true" data-id="${im.id}"><img src="${imgSrc(im)}"><button class="del" data-del="${im.id}">×</button></div>`).join("")}</div>
     ${isNew?"":'<label class="upl-btn" for="upl">+ Add photos</label><input type="file" id="upl" accept="image/*" multiple class="hidden">'}
     <div class="foot">${isNew?"<span></span>":'<button class="btn btn--danger btn--sm" id="delP">Delete</button>'}
       <div class="row-actions"><button class="btn btn--ghost" id="cancel">Cancel</button><button class="btn" id="save">Save</button></div></div></div>`;
@@ -328,7 +339,9 @@ async function openEditor(product, defaultCat){
       category:$("#f_cat",ov).value, active:$("#f_active",ov).value==="true", description:$("#f_desc",ov).value,
       sizes:[...ov.querySelectorAll(".sizes input:checked")].map(i=>i.value) };
     try {
-      if(isNew){ const c=(await pb.collection("products").getList(1,1)).totalItems; data.sort=c+1; await pb.collection("products").create(data); }
+      if(isNew){ const c=(await pb.collection("products").getList(1,1)).totalItems; data.sort=c+1;
+        const rec=await pb.collection("products").create(data);
+        await pb.collection("products").update(rec.id,{cloud_folder:`009/products/${slugify(data.name)}-${rec.id.slice(0,6)}`}); }
       else await pb.collection("products").update(product.id,data);
       close(); toast("Saved"); renderStore();
     } catch(err){ alert("Save failed: "+(err?.message||err)); }
@@ -339,10 +352,15 @@ async function openEditor(product, defaultCat){
     const iw=$("#imgs",ov);
     iw.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", async()=>{ await pb.collection("product_images").delete(b.dataset.del); b.closest(".imgcell").remove(); toast("Photo removed"); }));
     enableDrag(iw, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("product_images").update(id,{sort:idx+1}))); toast("Photo order saved"); }, ".imgcell");
-    $("#upl",ov).addEventListener("change", async(e)=>{ const files=[...e.target.files];
-      const base=(await pb.collection("product_images").getList(1,1,{filter:`product="${product.id}"`})).totalItems;
-      for(let i=0;i<files.length;i++){ const fd=new FormData(); fd.append("product",product.id); fd.append("sort",base+i+1); fd.append("image",files[i]); await pb.collection("product_images").create(fd); }
-      toast("Photos uploaded"); close(); openEditor(await pb.collection("products").getOne(product.id)); });
+    $("#upl",ov).addEventListener("change", async(e)=>{ const files=[...e.target.files]; if(!files.length)return;
+      toast("Uploading…");
+      try{
+        const base=(await pb.collection("product_images").getList(1,1,{filter:`product="${product.id}"`})).totalItems;
+        const folder=folderFor(product);
+        for(let i=0;i<files.length;i++){ const up=await cldUpload(files[i],folder);
+          await pb.collection("product_images").create({product:product.id,sort:base+i+1,url:up.url,public_id:up.public_id}); }
+        toast("Photos uploaded"); close(); openEditor(await pb.collection("products").getOne(product.id));
+      }catch(err){ alert("Upload failed: "+(err?.message||err)); } });
   }
 }
 
