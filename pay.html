@@ -426,8 +426,9 @@ function setStatus(state, hash, cur){
   $("pd-status").textContent = paid ? "Confirmed ✓" : "Confirming on-chain";
   $("pd-net").textContent = ($("pay-net").textContent||"").trim() || (cur||"").toUpperCase();
   $("pd-amt").textContent = ($("pay-amount").textContent||"").trim();
-  $("pd-confs").textContent = paid ? "Confirmed" : (confs==null ? "waiting for network…" : (confs + (confs===1?" confirmation":" confirmations")));
-  $("pdropBadge").textContent = paid ? "confirmed ✓" : (confs==null ? "" : confs+" conf.");
+  const tgt=requiredConfs(cur), shown=(confs==null?null:Math.min(confs,tgt));
+  $("pd-confs").textContent = paid ? ("Confirmed ("+tgt+"/"+tgt+")") : (shown==null ? "waiting for network…" : (shown+" / "+tgt));
+  $("pdropBadge").textContent = paid ? "confirmed ✓" : (shown==null ? "" : shown+"/"+tgt);
   const url=explorerUrl(cur,hash), ex=$("pd-explorer"), hEl=$("pd-hash"), hint=$("pd-hint");
   if(hash){ hEl.textContent=hash; if(hint)hint.style.display=""; if(url){ ex.href=url; ex.style.display="inline-block"; } else ex.style.display="none"; }
   else { hEl.textContent="detecting…"; if(hint)hint.style.display="none"; ex.style.display="none"; }
@@ -435,6 +436,17 @@ function setStatus(state, hash, cur){
 }
 function toggleDrop(){ const D=$("pdrop"), c=$("pdropClip"); const open=D.classList.toggle("open"); c.style.height = open ? c.scrollHeight+"px" : "0px"; }
 function copyHash(){ const h=($("pd-hash").textContent||""); if(h.length>20){ navigator.clipboard?.writeText(h); const hint=$("pd-hint"); if(hint){ hint.textContent="copied ✓"; setTimeout(()=>{hint.textContent="tap to copy";},1500);} } }
+function requiredConfs(cur){ cur=(cur||"").toLowerCase();
+  if(cur==="btc") return 2;
+  if(cur.indexOf("trc20")>=0||cur==="trx") return 20;
+  if(cur.indexOf("bsc")>=0||cur==="bnb"||cur.indexOf("bep20")>=0) return 15;
+  if(cur.indexOf("erc20")>=0||cur==="eth") return 12;
+  if(cur.indexOf("matic")>=0||cur.indexOf("polygon")>=0||cur==="pol") return 30;
+  if(cur.indexOf("sol")>=0) return 1;
+  if(cur==="ltc") return 6;
+  if(cur==="doge") return 10;
+  if(cur==="ton") return 1;
+  return 12; }
 async function getConfirmations(cur, hash){
   cur=(cur||"").toLowerCase(); if(!hash) return null;
   try{
