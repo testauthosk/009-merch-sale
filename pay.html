@@ -126,7 +126,12 @@
   .dot::after{ content:"";position:absolute;inset:-6px;border-radius:50%;border:1.5px solid var(--yellow);animation:pulse 1.6s ease-out infinite; }
   @keyframes pulse{ 0%{transform:scale(.55);opacity:.9} 100%{transform:scale(1.7);opacity:0} }
   .status.paid .dot{ background:var(--green); } .status.paid .dot::after{ border-color:var(--green); animation:none; }
-  .status .st1{ font-size:14px; font-weight:600; } .status .st2{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .status .st1{ font-size:14px; font-weight:600; } .status .st2{ font-size:12px; color:var(--muted); margin-top:2px; word-break:break-all; }
+  .status.confirming .dot{ background:#5aa0ff; } .status.confirming .dot::after{ border-color:#5aa0ff; }
+  .amt-row{ display:flex; align-items:center; justify-content:center; gap:10px; }
+  .amt-copy{ padding:6px 12px; font-size:12px; }
+  .txlink{ display:inline-block; margin-top:7px; font-size:12px; font-weight:700; color:var(--yellow); text-decoration:none; letter-spacing:.01em; }
+  @media(hover:hover){ .txlink:hover{ text-decoration:underline; } }
 
   /* success */
   .success{ text-align:center; padding:26px 6px 8px; }
@@ -219,7 +224,7 @@
       <div class="qr"><img id="qr" alt="payment QR" /></div>
       <div class="send">
         <div class="lbl">Send exactly</div>
-        <div class="amt" id="pay-amount">—</div>
+        <div class="amt-row"><div class="amt" id="pay-amount">—</div><button class="copy amt-copy" id="copyAmtBtn" onclick="copyAmount()">Copy</button></div>
         <div class="net" id="pay-net">—</div>
       </div>
       <div class="addr">
@@ -228,7 +233,7 @@
       </div>
       <div class="status" id="status">
         <span class="dot"></span>
-        <div><div class="st1" id="st1">Waiting for your payment…</div><div class="st2" id="st2">Send the exact amount to the address above.</div></div>
+        <div style="flex:1;min-width:0"><div class="st1" id="st1">Waiting for your payment…</div><div class="st2" id="st2">Send the exact amount to the address above.</div><a class="txlink hidden" id="txlink" target="_blank" rel="noopener">Track confirmations ↗</a></div>
       </div>
     </div>
 
@@ -238,6 +243,7 @@
         <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
         <h2>Payment received</h2>
         <p>Thank you. Order <span class="num" id="done-no">—</span> is paid and confirmed.<br/>We'll be in touch shortly.</p>
+        <a class="txlink hidden" id="done-tx" target="_blank" rel="noopener" style="margin:0 0 14px">View transaction ↗</a><br/>
         <a class="shopbtn" href="./#/">Back to store</a>
       </div>
     </div>
@@ -272,7 +278,7 @@ function chip(text, code){
   return `<span class="tick" style="display:grid">${(text||"").slice(0,4)}<img src="${ICON(code)}" alt="" onerror="this.remove()"></span>`;
 }
 
-let order=null, curPick=null, netCode=null, poll=null, tick=null, expiry=null, payAddress="";
+let order=null, curPick=null, netCode=null, poll=null, tick=null, expiry=null, payAddress="", payAmountRaw="", payHash="", payCur="";
 const $=(id)=>document.getElementById(id);
 function show(id){ ["loading","pick","pay","done","fail"].forEach(x=>$(x).classList.toggle("hidden", x!==id)); }
 async function jget(u){ const r=await fetch(u); if(!r.ok) throw 0; return r.json(); }
@@ -333,7 +339,7 @@ $("proceed").onclick=async ()=>{
   try{
     const p=await fetch(`${BE}/api/shop/payment`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({order:ORDER,pay_currency:netCode})}).then(r=>r.json());
     if(p.error || !p.pay_address){ throw new Error(p.error||"failed"); }
-    payAddress=p.pay_address;
+    payAddress=p.pay_address; payAmountRaw=String(p.pay_amount); payCur=(p.pay_currency||netCode); payHash="";
     $("qr").src=`https://api.qrserver.com/v1/create-qr-code/?size=168x168&margin=0&data=${encodeURIComponent(payAddress)}`;
     $("pay-amount").textContent=`${p.pay_amount} ${(p.pay_currency||netCode).toUpperCase()}`;
     $("pay-net").textContent=$("netLabel").textContent;
@@ -346,18 +352,38 @@ $("proceed").onclick=async ()=>{
   }
 };
 
-function copyAddr(){ navigator.clipboard?.writeText(payAddress); const b=$("copyBtn"); b.textContent="Copied ✓"; b.classList.add("done"); setTimeout(()=>{b.textContent="Copy";b.classList.remove("done");},1600); }
+function flashCopy(b){ if(!b)return; b.textContent="Copied ✓"; b.classList.add("done"); setTimeout(()=>{b.textContent="Copy";b.classList.remove("done");},1600); }
+function copyAddr(){ navigator.clipboard?.writeText(payAddress); flashCopy($("copyBtn")); }
+function copyAmount(){ navigator.clipboard?.writeText(payAmountRaw); flashCopy($("copyAmtBtn")); }
+function explorerUrl(cur,hash){ cur=(cur||"").toLowerCase(); if(!hash)return"";
+  if(cur.indexOf("trc20")>=0||cur==="trx")return"https://tronscan.org/#/transaction/"+hash;
+  if(cur.indexOf("bsc")>=0||cur==="bnb"||cur.indexOf("bep20")>=0)return"https://bscscan.com/tx/"+hash;
+  if(cur.indexOf("erc20")>=0||cur==="eth")return"https://etherscan.io/tx/"+hash;
+  if(cur.indexOf("sol")>=0)return"https://solscan.io/tx/"+hash;
+  if(cur.indexOf("matic")>=0||cur.indexOf("polygon")>=0)return"https://polygonscan.com/tx/"+hash;
+  if(cur==="btc")return"https://mempool.space/tx/"+hash;
+  if(cur==="ltc")return"https://blockchair.com/litecoin/transaction/"+hash;
+  if(cur==="doge")return"https://blockchair.com/dogecoin/transaction/"+hash;
+  if(cur==="ton")return"https://tonviewer.com/transaction/"+hash;
+  return""; }
+function shortHash(h){ return h&&h.length>22 ? h.slice(0,12)+"…"+h.slice(-8) : (h||""); }
 
 function startTimer(secs){
   clearInterval(tick); expiry=Date.now()+secs*1000;
   const upd=()=>{ const s=Math.max(0,Math.floor((expiry-Date.now())/1000)); const t=`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; $("expire").textContent=t; $("expire2").textContent=t; if(s<=0)clearInterval(tick); };
   upd(); tick=setInterval(upd,1000);
 }
-function setStatus(state){
+function setStatus(state, hash, cur){
   const m={ waiting:["Waiting for your payment…","Send the exact amount to the address above."],
-    confirming:["Payment detected — confirming…","This can take a few minutes on-chain."],
-    paid:["Payment received ✓","Finishing up…"] };
-  const [a,b]=m[state]||m.waiting; $("st1").textContent=a; $("st2").textContent=b; $("status").classList.toggle("paid",state==="paid");
+    confirming:["Payment detected — confirming on-chain…","Usually a few minutes. Track it live below."],
+    paid:["Payment confirmed ✓","Your payment is complete."] };
+  const [a,b]=m[state]||m.waiting; $("st1").textContent=a; $("st2").textContent=b;
+  const S=$("status"); S.classList.toggle("paid",state==="paid"); S.classList.toggle("confirming",state==="confirming");
+  const tl=$("txlink"), url=explorerUrl(cur,hash);
+  if(hash){
+    $("st2").textContent = b + "  ·  " + shortHash(hash);
+    if(url){ tl.href=url; tl.textContent = state==="paid" ? "View transaction ↗" : "Track confirmations ↗"; tl.classList.remove("hidden"); }
+  } else { tl.classList.add("hidden"); }
 }
 function startPoll(){
   clearInterval(poll);
@@ -365,12 +391,13 @@ function startPoll(){
     try{
       const st=await jget(`${BE}/api/shop/payment-status/${encodeURIComponent(ORDER)}`);
       const ps=(st.payment_status||"").toLowerCase(), os=(st.status||"").toLowerCase();
-      if(os==="paid"||ps==="finished"||ps==="confirmed"){ setStatus("paid"); clearInterval(poll); clearInterval(tick);
-        setTimeout(()=>{ $("done-no").textContent="#"+(order.order_no||ORDER); show("done"); },1400); }
-      else if(["confirming","sending","partially_paid"].includes(ps)) setStatus("confirming");
-      else setStatus("waiting");
+      const hash=st.hash||payHash||""; const cur=st.pay_currency||payCur||netCode; if(hash)payHash=hash;
+      if(os==="paid"||ps==="finished"||ps==="confirmed"){ setStatus("paid",hash,cur); clearInterval(poll); clearInterval(tick);
+        setTimeout(()=>{ $("done-no").textContent="#"+((order&&order.order_no)||ORDER); const du=explorerUrl(cur,hash), dl=$("done-tx"); if(hash&&du){ dl.href=du; dl.classList.remove("hidden"); } show("done"); },1400); }
+      else if(["confirming","sending","partially_paid"].includes(ps)) setStatus("confirming",hash,cur);
+      else setStatus("waiting",hash,cur);
     }catch(e){}
-  },6000);
+  },5000);
 }
 function backToPick(){ clearInterval(poll); show("pick"); }
 
