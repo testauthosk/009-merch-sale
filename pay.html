@@ -128,7 +128,7 @@
   .status.paid .dot{ background:var(--green); } .status.paid .dot::after{ border-color:var(--green); animation:none; }
   .status .st1{ font-size:14px; font-weight:600; } .status .st2{ font-size:12px; color:var(--muted); margin-top:2px; word-break:break-all; }
   .status.confirming .dot{ background:#5aa0ff; } .status.confirming .dot::after{ border-color:#5aa0ff; }
-  .amt-row{ display:flex; align-items:center; justify-content:center; gap:10px; }
+  .amt-row{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; }
   .amt-copy{ padding:6px 12px; font-size:12px; }
   .txlink{ display:inline-block; margin-top:7px; font-size:12px; font-weight:700; color:var(--yellow); text-decoration:none; letter-spacing:.01em; }
   @media(hover:hover){ .txlink:hover{ text-decoration:underline; } }
@@ -341,7 +341,7 @@ $("proceed").onclick=async ()=>{
     if(p.error || !p.pay_address){ throw new Error(p.error||"failed"); }
     payAddress=p.pay_address; payAmountRaw=String(p.pay_amount); payCur=(p.pay_currency||netCode); payHash="";
     $("qr").src=`https://api.qrserver.com/v1/create-qr-code/?size=168x168&margin=0&data=${encodeURIComponent(payAddress)}`;
-    $("pay-amount").textContent=`${p.pay_amount} ${(p.pay_currency||netCode).toUpperCase()}`;
+    $("pay-amount").textContent=`${p.pay_amount} ${(curPick&&curPick.t)||(p.pay_currency||netCode).toUpperCase()}`;
     $("pay-net").textContent=$("netLabel").textContent;
     $("pay-addr").textContent=payAddress;
     if(p.expiration_estimate_date) startTimer(Math.max(60,Math.floor((new Date(p.expiration_estimate_date).getTime()-Date.now())/1000)));
