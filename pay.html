@@ -135,16 +135,18 @@
   /* payment details dropdown */
   .pdrop{ margin-top:16px; border-top:1px solid var(--line); padding-top:16px; opacity:0; transform:translateY(8px); transition:opacity .38s ease, transform .38s ease; }
   .pdrop.show{ opacity:1; transform:none; }
-  .pdrop-head{ width:100%; display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:13px 15px; cursor:pointer; color:var(--text); font-family:inherit; text-align:left; }
+  .pdrop-box{ border:1px solid var(--line); border-radius:12px; background:var(--surface); overflow:hidden; }
+  .pdrop-head{ width:100%; display:flex; align-items:center; gap:11px; background:transparent; border:0; border-bottom:1px solid transparent; padding:13px 15px; cursor:pointer; color:var(--text); font-family:inherit; text-align:left; }
+  .pdrop.open .pdrop-head{ border-bottom-color:var(--line); }
   .pdrop-dot{ width:9px;height:9px;border-radius:50%;background:#5aa0ff;flex:none;position:relative; }
   .pdrop:not(.paid) .pdrop-dot::after{ content:"";position:absolute;inset:-5px;border-radius:50%;border:1.5px solid #5aa0ff;animation:pulse 1.6s ease-out infinite; }
   .pdrop.paid .pdrop-dot{ background:var(--green); }
   .pdrop-title{ font-size:13.5px; font-weight:600; flex:1; }
-  .pdrop-hint{ font-size:11.5px; color:var(--muted); }
+  .pdrop-badge{ font-size:11.5px; color:var(--yellow); font-weight:700; white-space:nowrap; }
   .pdrop-chev{ width:12px;height:8px;color:var(--muted);transition:transform .3s ease;flex:none; }
   .pdrop.open .pdrop-chev{ transform:rotate(180deg); }
   .pdrop-clip{ height:0; overflow:hidden; transition:height .36s cubic-bezier(.65,0,.35,1); }
-  .pdrop-body{ padding:6px 4px 2px; }
+  .pdrop-body{ padding:4px 15px 12px; }
   .pd-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12.5px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.05); }
   .pd-row:last-of-type{ border-bottom:0; }
   .pd-row span{ color:var(--muted); } .pd-row b{ font-weight:600; }
@@ -254,19 +256,22 @@
         <div style="flex:1;min-width:0"><div class="st1" id="st1">Waiting for your payment…</div><div class="st2" id="st2">Send the exact amount to the address above.</div></div>
       </div>
       <div class="pdrop hidden" id="pdrop">
-        <button class="pdrop-head" id="pdropHead" type="button" onclick="toggleDrop()">
-          <span class="pdrop-dot" id="pdropDot"></span>
-          <span class="pdrop-title" id="pdropTitle">Payment detected — confirming…</span>
-          <span class="pdrop-hint">details</span>
-          <svg class="pdrop-chev" viewBox="0 0 12 8"><path d="M1 2l5 4 5-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <div class="pdrop-clip" id="pdropClip"><div class="pdrop-body">
-          <div class="pd-row"><span>Status</span><b id="pd-status">—</b></div>
-          <div class="pd-row"><span>Network</span><b id="pd-net">—</b></div>
-          <div class="pd-row"><span>Amount</span><b id="pd-amt">—</b></div>
-          <div class="pd-row col"><span>Transaction hash <em id="pd-hint" style="color:var(--muted);font-style:normal">tap to copy</em></span><code id="pd-hash" onclick="copyHash()">detecting…</code></div>
-          <a class="txlink" id="pd-explorer" target="_blank" rel="noopener" style="display:none">Track confirmations on explorer ↗</a>
-        </div></div>
+        <div class="pdrop-box">
+          <button class="pdrop-head" id="pdropHead" type="button" onclick="toggleDrop()">
+            <span class="pdrop-dot" id="pdropDot"></span>
+            <span class="pdrop-title" id="pdropTitle">Confirming…</span>
+            <span class="pdrop-badge" id="pdropBadge"></span>
+            <svg class="pdrop-chev" viewBox="0 0 12 8"><path d="M1 2l5 4 5-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="pdrop-clip" id="pdropClip"><div class="pdrop-body">
+            <div class="pd-row"><span>Status</span><b id="pd-status">—</b></div>
+            <div class="pd-row"><span>Confirmations</span><b id="pd-confs">—</b></div>
+            <div class="pd-row"><span>Network</span><b id="pd-net">—</b></div>
+            <div class="pd-row"><span>Amount</span><b id="pd-amt">—</b></div>
+            <div class="pd-row col"><span>Transaction hash <em id="pd-hint" style="color:var(--muted);font-style:normal">tap to copy</em></span><code id="pd-hash" onclick="copyHash()">detecting…</code></div>
+            <a class="txlink" id="pd-explorer" target="_blank" rel="noopener" style="display:none">Open transaction in explorer ↗</a>
+          </div></div>
+        </div>
       </div>
     </div>
 
@@ -406,6 +411,7 @@ function startTimer(secs){
   const upd=()=>{ const s=Math.max(0,Math.floor((expiry-Date.now())/1000)); const t=`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; $("expire").textContent=t; $("expire2").textContent=t; if(s<=0)clearInterval(tick); };
   upd(); tick=setInterval(upd,1000);
 }
+let confs=null;
 function setStatus(state, hash, cur){
   const S=$("status"), D=$("pdrop");
   if(state==="waiting"){
@@ -416,17 +422,53 @@ function setStatus(state, hash, cur){
   S.classList.add("hidden");
   if(D.classList.contains("hidden")){ D.classList.remove("hidden"); requestAnimationFrame(()=>D.classList.add("show")); }
   D.classList.toggle("paid",paid);
-  $("pdropTitle").textContent = paid ? "Payment confirmed" : "Payment detected — confirming…";
-  $("pd-status").textContent = paid ? "Confirmed" : "Confirming on-chain";
+  $("pdropTitle").textContent = paid ? "Payment confirmed" : "Confirming payment…";
+  $("pd-status").textContent = paid ? "Confirmed ✓" : "Confirming on-chain";
   $("pd-net").textContent = ($("pay-net").textContent||"").trim() || (cur||"").toUpperCase();
   $("pd-amt").textContent = ($("pay-amount").textContent||"").trim();
+  $("pd-confs").textContent = paid ? "Confirmed" : (confs==null ? "waiting for network…" : (confs + (confs===1?" confirmation":" confirmations")));
+  $("pdropBadge").textContent = paid ? "confirmed ✓" : (confs==null ? "" : confs+" conf.");
   const url=explorerUrl(cur,hash), ex=$("pd-explorer"), hEl=$("pd-hash"), hint=$("pd-hint");
   if(hash){ hEl.textContent=hash; if(hint)hint.style.display=""; if(url){ ex.href=url; ex.style.display="inline-block"; } else ex.style.display="none"; }
   else { hEl.textContent="detecting…"; if(hint)hint.style.display="none"; ex.style.display="none"; }
   if(D.classList.contains("open")) $("pdropClip").style.height=$("pdropClip").scrollHeight+"px";
 }
 function toggleDrop(){ const D=$("pdrop"), c=$("pdropClip"); const open=D.classList.toggle("open"); c.style.height = open ? c.scrollHeight+"px" : "0px"; }
-function copyHash(){ const h=($("pd-hash").textContent||""); if(h.length>20){ navigator.clipboard?.writeText(h); const hint=$("pd-hint"); if(hint){ const t=hint.textContent; hint.textContent="copied ✓"; setTimeout(()=>{hint.textContent=t;},1500);} } }
+function copyHash(){ const h=($("pd-hash").textContent||""); if(h.length>20){ navigator.clipboard?.writeText(h); const hint=$("pd-hint"); if(hint){ hint.textContent="copied ✓"; setTimeout(()=>{hint.textContent="tap to copy";},1500);} } }
+async function getConfirmations(cur, hash){
+  cur=(cur||"").toLowerCase(); if(!hash) return null;
+  try{
+    const rpc = (cur.indexOf("bsc")>=0||cur==="bnb"||cur.indexOf("bep20")>=0) ? "https://bsc-rpc.publicnode.com"
+      : (cur.indexOf("erc20")>=0||cur==="eth") ? "https://ethereum-rpc.publicnode.com"
+      : (cur.indexOf("matic")>=0||cur.indexOf("polygon")>=0||cur==="pol") ? "https://polygon-bor-rpc.publicnode.com" : null;
+    if(rpc){
+      const tx=await fetch(rpc,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:"eth_getTransactionByHash",params:[hash]})}).then(r=>r.json());
+      if(!tx.result||!tx.result.blockNumber) return 0;
+      const cb=await fetch(rpc,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:2,method:"eth_blockNumber",params:[]})}).then(r=>r.json());
+      return Math.max(0, parseInt(cb.result,16)-parseInt(tx.result.blockNumber,16)+1);
+    }
+    if(cur.indexOf("trc20")>=0||cur==="trx"){
+      const info=await fetch("https://api.trongrid.io/wallet/gettransactioninfobyid",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({value:hash})}).then(r=>r.json());
+      if(!info||!info.blockNumber) return 0;
+      const nb=await fetch("https://api.trongrid.io/wallet/getnowblock",{method:"POST"}).then(r=>r.json());
+      const cb=nb&&nb.block_header&&nb.block_header.raw_data&&nb.block_header.raw_data.number;
+      return cb ? Math.max(0, cb-info.blockNumber+1) : 0;
+    }
+    if(cur==="btc"){
+      const st=await fetch("https://mempool.space/api/tx/"+hash+"/status").then(r=>r.json());
+      if(!st||!st.confirmed) return 0;
+      const tip=await fetch("https://mempool.space/api/blocks/tip/height").then(r=>r.text());
+      return Math.max(0, parseInt(tip)-st.block_height+1);
+    }
+    if(cur.indexOf("sol")>=0){
+      const r=await fetch("https://api.mainnet-beta.solana.com",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:"getSignatureStatuses",params:[[hash],{searchTransactionHistory:true}]})}).then(r=>r.json());
+      const s=r&&r.result&&r.result.value&&r.result.value[0];
+      if(!s) return 0;
+      return s.confirmationStatus==="finalized" ? 32 : (s.confirmations||0);
+    }
+  }catch(e){}
+  return null;
+}
 function startPoll(){
   clearInterval(poll);
   poll=setInterval(async()=>{
@@ -434,9 +476,11 @@ function startPoll(){
       const st=await jget(`${BE}/api/shop/payment-status/${encodeURIComponent(ORDER)}`);
       const ps=(st.payment_status||"").toLowerCase(), os=(st.status||"").toLowerCase();
       const hash=st.hash||payHash||""; const cur=st.pay_currency||payCur||netCode; if(hash)payHash=hash;
-      if(os==="paid"||ps==="finished"||ps==="confirmed"){ setStatus("paid",hash,cur); clearInterval(poll); clearInterval(tick);
-        setTimeout(()=>{ $("done-no").textContent="#"+((order&&order.order_no)||ORDER); const du=explorerUrl(cur,hash), dl=$("done-tx"); if(hash&&du){ dl.href=du; dl.classList.remove("hidden"); } show("done"); },1400); }
-      else if(["confirming","sending","partially_paid"].includes(ps)) setStatus("confirming",hash,cur);
+      const done = os==="paid"||ps==="finished"||ps==="confirmed";
+      if(done){ confs=null; setStatus("paid",hash,cur); clearInterval(poll); clearInterval(tick);
+        setTimeout(()=>{ $("done-no").textContent="#"+((order&&order.order_no)||ORDER); const du=explorerUrl(cur,hash), dl=$("done-tx"); if(hash&&du){ dl.href=du; dl.classList.remove("hidden"); } show("done"); },1600); }
+      else if(["confirming","sending","partially_paid"].includes(ps) || hash){ setStatus("confirming",hash,cur);
+        if(hash) getConfirmations(cur,hash).then(c=>{ if(c!=null){ confs=c; setStatus("confirming",hash,cur); } }); }
       else setStatus("waiting",hash,cur);
     }catch(e){}
   },5000);
