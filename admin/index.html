@@ -170,6 +170,39 @@ async function cldUpload(file, folder){
   return {url:r.secure_url, public_id:r.public_id};
 }
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
+// Ошибку показываем словами, а не тишиной: раньше кнопка «Change photo»
+// просто ничего не делала, и понять причину было невозможно.
+function fail(what, err){
+  const detail = err?.data?.data ? Object.entries(err.data.data).map(([k,v])=>`${k}: ${v.message||v}`).join("; ") : "";
+  const msg = detail || err?.message || String(err||"");
+  console.error(what, err);
+  alert(what + "\n" + msg);
+}
+async function safe(what, fn){ try { return await fn(); } catch(err){ fail(what, err); } }
+
+/* Телефоны отдают снимки по 8-15 МБ, а айфон ещё и в HEIC. Ужимаем в браузере
+   до разумного размера: и на сервер проходит, и сайт грузится быстрее.
+   Если формат браузеру незнаком (HEIC в Chrome), отдаём файл как есть —
+   сервер такие теперь принимает. */
+async function shrinkImage(file, maxSide = 2400, quality = 0.86){
+  if (!/^image\//.test(file.type || "")) return file;
+  if (file.size < 900 * 1024) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, w, h);
+    const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", quality));
+    if (!blob || blob.size >= file.size) return file;
+    const name = (file.name || "photo").replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], name, { type: "image/jpeg" });
+  } catch (err) {
+    console.warn("сжать не вышло, отправляем оригинал", err);
+    return file;
+  }
+}
 let TAB="store";
 
 /* ---------- login ---------- */
@@ -233,13 +266,24 @@ function gridHTML(products, firstImg, withAdd){
 function wireGrid(gridEl, products, opts={}){
   gridEl.querySelectorAll(".cell[data-id]").forEach(el=> el.addEventListener("click",()=>openEditor(products.find(p=>p.id===el.dataset.id))));
   const add=gridEl.querySelector("[data-add]"); if(add) add.addEventListener("click",()=>openEditor(null, opts.addCategory));
-  if(opts.reorder!==false) enableDrag(gridEl, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1}))); toast("Order saved"); }, ".cell[data-id]");
+  if(opts.reorder!==false) enableDrag(gridEl, (ids)=>safe("Order was not saved", async()=>{ await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1}))); toast("Order saved"); }), ".cell[data-id]");
 }
 // upload a settings image field (hero / collection1 / collection2)
 function wireImageUpload(btn, settingsId, field, after){
   btn.addEventListener("click",(e)=>{ e.stopPropagation();
     const f=document.createElement("input"); f.type="file"; f.accept="image/*";
-    f.onchange=async()=>{ if(!f.files[0])return; const fd=new FormData(); fd.append(field,f.files[0]); await pb.collection("settings").update(settingsId,fd); toast("Updated"); after(); };
+    f.onchange=async()=>{
+      const picked=f.files[0]; if(!picked) return;
+      const label=btn.textContent; btn.textContent="Uploading…"; btn.disabled=true;
+      try{
+        const file=await shrinkImage(picked);
+        const fd=new FormData(); fd.append(field,file);
+        await pb.collection("settings").update(settingsId,fd);
+        toast("Photo updated");
+        after();
+      }catch(err){ fail("Photo was not saved", err); }
+      finally{ btn.textContent=label; btn.disabled=false; }
+    };
     f.click();
   });
 }
@@ -260,8 +304,8 @@ async function renderStore(){
     ${gridHTML(products, firstImg, false)}
     <div class="sec-title">Collections</div>
     <div class="coll-grid">
-      <div class="coll-cell" style="background-image:url('${c1}')"><button class="btn btn--sm coll-edit" data-set="collection1">Change photo</button><div class="coll-label"><span>Bottoms</span><b>009 Shorts collection</b></div></div>
       <div class="coll-cell" style="background-image:url('${c2}')"><button class="btn btn--sm coll-edit" data-set="collection2">Change photo</button><div class="coll-label"><span>Tops</span><b>009 T-shirts collection</b></div></div>
+      <div class="coll-cell" style="background-image:url('${c1}')"><button class="btn btn--sm coll-edit" data-set="collection1">Change photo</button><div class="coll-label"><span>Bottoms</span><b>009 Shorts</b></div></div>
     </div>
     <div class="sec-title">Bestsellers <span class="hint">· same products, shared order</span></div>
     ${gridHTML(products, firstImg, false)}`;
@@ -347,17 +391,17 @@ async function openEditor(product, defaultCat){
     } catch(err){ alert("Save failed: "+(err?.message||err)); }
   });
   if(!isNew){
-    $("#delP",ov).addEventListener("click", async()=>{ if(!confirm("Delete this product and its photos?"))return;
-      await pb.collection("products").delete(product.id); close(); toast("Deleted"); renderStore(); });
+    $("#delP",ov).addEventListener("click", ()=>{ if(!confirm("Delete this product and its photos?"))return;
+      safe("Product was not deleted", async()=>{ await pb.collection("products").delete(product.id); close(); toast("Deleted"); renderStore(); }); });
     const iw=$("#imgs",ov);
-    iw.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", async()=>{ await pb.collection("product_images").delete(b.dataset.del); b.closest(".imgcell").remove(); toast("Photo removed"); }));
-    enableDrag(iw, async(ids)=>{ await Promise.all(ids.map((id,idx)=>pb.collection("product_images").update(id,{sort:idx+1}))); toast("Photo order saved"); }, ".imgcell");
+    iw.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click", ()=>safe("Photo was not removed", async()=>{ await pb.collection("product_images").delete(b.dataset.del); b.closest(".imgcell").remove(); toast("Photo removed"); })));
+    enableDrag(iw, (ids)=>safe("Photo order was not saved", async()=>{ await Promise.all(ids.map((id,idx)=>pb.collection("product_images").update(id,{sort:idx+1}))); toast("Photo order saved"); }), ".imgcell");
     $("#upl",ov).addEventListener("change", async(e)=>{ const files=[...e.target.files]; if(!files.length)return;
       toast("Uploading…");
       try{
         const base=(await pb.collection("product_images").getList(1,1,{filter:`product="${product.id}"`})).totalItems;
         const folder=folderFor(product);
-        for(let i=0;i<files.length;i++){ const up=await cldUpload(files[i],folder);
+        for(let i=0;i<files.length;i++){ const up=await cldUpload(await shrinkImage(files[i]),folder);
           await pb.collection("product_images").create({product:product.id,sort:base+i+1,url:up.url,public_id:up.public_id}); }
         toast("Photos uploaded"); close(); openEditor(await pb.collection("products").getOne(product.id));
       }catch(err){ alert("Upload failed: "+(err?.message||err)); } });
@@ -404,7 +448,7 @@ async function renderOrders(){
     ow.querySelectorAll("[data-f]").forEach(s=>s.addEventListener("click",()=>{ORD_FILTER=s.dataset.f;draw();}));
     ow.querySelectorAll(".ocard-head").forEach(h=>h.addEventListener("click",e=>{ if(e.target.closest(".ostatus"))return; h.closest(".ocard").classList.toggle("open"); }));
     ow.querySelectorAll(".ostatus").forEach(sel=>{ sel.addEventListener("click",e=>e.stopPropagation());
-      sel.addEventListener("change",async()=>{ await pb.collection("orders").update(sel.dataset.id,{status:sel.value}); toast("Status updated"); renderOrders(); }); });
+      sel.addEventListener("change",()=>safe("Status was not saved", async()=>{ await pb.collection("orders").update(sel.dataset.id,{status:sel.value}); toast("Status updated"); renderOrders(); })); });
   };
   draw();
 }
@@ -436,8 +480,8 @@ async function renderRecipients(){
         <button class="btn btn--ghost btn--sm" data-del="${r.id}" title="Удалить">✕</button>
       </div>`).join("")
       : '<p class="muted" style="margin-top:14px">Пока нет получателей. Пусть человек напишет боту /start и передаст код.</p>';
-    $("#rw").querySelectorAll("[data-on]").forEach(b=>b.addEventListener("click",async()=>{await pb.collection("notify_recipients").update(b.dataset.on,{active:true});toast("Включён");draw();}));
-    $("#rw").querySelectorAll("[data-off]").forEach(b=>b.addEventListener("click",async()=>{await pb.collection("notify_recipients").update(b.dataset.off,{active:false});toast("Отключён");draw();}));
+    $("#rw").querySelectorAll("[data-on]").forEach(b=>b.addEventListener("click",()=>safe("Не удалось включить", async()=>{await pb.collection("notify_recipients").update(b.dataset.on,{active:true});toast("Включён");draw();})));
+    $("#rw").querySelectorAll("[data-off]").forEach(b=>b.addEventListener("click",()=>safe("Не удалось отключить", async()=>{await pb.collection("notify_recipients").update(b.dataset.off,{active:false});toast("Отключён");draw();})));
     $("#rw").querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{await pb.collection("notify_recipients").delete(b.dataset.del);toast("Удалён");draw();}));
   };
   await draw();
