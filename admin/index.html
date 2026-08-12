@@ -73,6 +73,11 @@
   .cell.add:hover { color:var(--yellow); border-color:var(--yellow); }
   .cell.add .plus { font-size:34px; line-height:1; }
   .cell.add div:last-child { font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-top:6px; }
+  /* home section zones: sec1 (top of home) / sec2 (bottom of home) / catalog-only */
+  .grid .zone { grid-column:1/-1; background:#050506; border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:11px 15px; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .grid .zone b { color:var(--yellow); font-size:11px; text-transform:uppercase; letter-spacing:.1em; }
+  .grid .zone span { color:var(--muted); font-size:11px; letter-spacing:.02em; }
+  .grid .zone.cat b { color:var(--muted); }
   /* collections + catalog bar */
   .coll-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); }
   @media (max-width:800px){ .coll-grid { grid-template-columns:1fr; } }
@@ -268,6 +273,31 @@ function wireGrid(gridEl, products, opts={}){
   const add=gridEl.querySelector("[data-add]"); if(add) add.addEventListener("click",()=>openEditor(null, opts.addCategory));
   if(opts.reorder!==false) enableDrag(gridEl, (ids)=>safe("Order was not saved", async()=>{ await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1}))); toast("Order saved"); }), ".cell[data-id]");
 }
+// home layout: one grid split into zones by sort position — first 4 = section 1 (top of home),
+// next 4 = section 2 (bottom of home), the rest = catalog only. Drag a card across a zone line to move it.
+function sectionedGridHTML(products, firstImg){
+  const zone=(cls,label,sub)=>`<div class="zone ${cls}"><b>${label}</b><span>${sub}</span></div>`;
+  let html=`<div class="grid grid--sectioned">`;
+  html+=zone("","На главной · секция 1","верхние 4 товара под hero");
+  let catShown=false;
+  products.forEach((p,i)=>{
+    if(i===4) html+=zone("","На главной · секция 2","нижние 4, под фото коллекций");
+    if(i===8){ html+=zone("cat","Только в каталоге","на главную не попадают"); catShown=true; }
+    html+=cellHTML(p,firstImg);
+  });
+  if(!catShown) html+=zone("cat","Только в каталоге","перетащи карточку сюда, чтобы убрать её с главной");
+  html+=`<div class="cell add" data-add="1"><div class="plus">+</div><div>Добавить товар</div></div>`;
+  html+=`</div>`;
+  return html;
+}
+function wireSectionedGrid(gridEl, products){
+  gridEl.querySelectorAll(".cell[data-id]").forEach(el=> el.addEventListener("click",()=>openEditor(products.find(p=>p.id===el.dataset.id))));
+  const add=gridEl.querySelector("[data-add]"); if(add) add.addEventListener("click",()=>openEditor(null));
+  enableDrag(gridEl, (ids)=>safe("Порядок не сохранился", async()=>{
+    await Promise.all(ids.map((id,idx)=>pb.collection("products").update(id,{sort:idx+1})));
+    toast("Порядок сохранён"); renderStore();
+  }), ".cell[data-id]");
+}
 // upload a settings image field (hero / collection1 / collection2)
 function wireImageUpload(btn, settingsId, field, after){
   btn.addEventListener("click",(e)=>{ e.stopPropagation();
@@ -290,7 +320,7 @@ function wireImageUpload(btn, settingsId, field, after){
 
 // HOME tab — full mirror: hero + featured grid + collections + bestsellers grid
 async function renderStore(){
-  $("#view").innerHTML=`<div class="canvas"><p class="canvas-note">Your home page, laid out like the live site. Edit any block — hero, products, or collections.</p><div id="mirror">Loading…</div></div>`;
+  $("#view").innerHTML=`<div class="canvas"><p class="canvas-note">Главная, как на сайте. Первые 4 товара = секция 1 (верх главной), следующие 4 = секция 2 (низ, под коллекциями), остальные видны только в каталоге. Тащи карточки между секциями и внутри; клик по карточке — редактировать.</p><div id="mirror">Loading…</div></div>`;
   const { settings, products, firstImg } = await loadStore();
   const heroUrl=fileUrl(settings,settings.hero), c1=fileUrl(settings,settings.collection1), c2=fileUrl(settings,settings.collection2);
   const mirror=$("#mirror");
@@ -300,19 +330,17 @@ async function renderStore(){
       <button class="btn btn--sm hero-edit" data-set="hero">Change photo</button>
       <div class="lock"><div class="cou">009 COUTURE</div><div class="banda">BANDA</div><div class="drop">1ST CAPSULE COLLECTION DROP</div></div>
     </div>
-    <div class="sec-title">Featured products <span class="hint">· click to edit · drag to reorder</span></div>
-    ${gridHTML(products, firstImg, false)}
-    <div class="sec-title">Collections</div>
+    <div class="sec-title">Товары главной и каталога <span class="hint">· тащи карточки между секциями · клик — редактировать</span></div>
+    ${sectionedGridHTML(products, firstImg)}
+    <div class="sec-title">Коллекции <span class="hint">· 2 фото на главной между секцией 1 и секцией 2</span></div>
     <div class="coll-grid">
       <div class="coll-cell" style="background-image:url('${c2}')"><button class="btn btn--sm coll-edit" data-set="collection2">Change photo</button><div class="coll-label"><span>Tops</span><b>009 T-shirts collection</b></div></div>
       <div class="coll-cell" style="background-image:url('${c1}')"><button class="btn btn--sm coll-edit" data-set="collection1">Change photo</button><div class="coll-label"><span>Bottoms</span><b>009 Shorts</b></div></div>
-    </div>
-    <div class="sec-title">Bestsellers <span class="hint">· same products, shared order</span></div>
-    ${gridHTML(products, firstImg, false)}`;
+    </div>`;
   wireImageUpload(mirror.querySelector('[data-set="hero"]'), settings.id, "hero", renderStore);
   wireImageUpload(mirror.querySelector('[data-set="collection1"]'), settings.id, "collection1", renderStore);
   wireImageUpload(mirror.querySelector('[data-set="collection2"]'), settings.id, "collection2", renderStore);
-  mirror.querySelectorAll(".grid").forEach(g=> wireGrid(g, products));
+  wireSectionedGrid(mirror.querySelector(".grid--sectioned"), products);
 }
 
 // CATALOG tab — mirror of the catalog page: working category filter + editable grid
