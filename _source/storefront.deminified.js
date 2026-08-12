@@ -19914,10 +19914,6 @@ function fh({
                     })]
                 })
             })]
-        }), (0, Z.jsx)(Sp.h2, {
-            className: `section-title`,
-            ...dh,
-            children: `Shop bestsellers`
         }), (0, Z.jsx)(`section`, {
             className: `product-grid bestseller-grid`,
             "aria-label": `Bestsellers`,
@@ -21016,8 +21012,8 @@ function xh() {
         return Promise.all([Bm(), Vm()]).then(([t, n]) => {
             e && u({
                 all: t,
-                featured: t,
-                bestsellers: t,
+                featured: t.slice(0, 4),
+                bestsellers: t.slice(4, 8),
                 catalog: t,
                 settings: n,
                 loading: !1

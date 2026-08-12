@@ -1,19 +1,17 @@
 
 /* === Gleb edits 2026-08-12 (append, override) === */
-/* 1) Collection tiles: keep only white SHOP NOW button (remove text + dark backing) */
+/* 1) Collection tiles: keep only the white SHOP NOW button (remove label text + dark backing) */
 .collection-copy span,.collection-copy h2{display:none!important}
 .collection-copy{background:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding:0!important;margin:0!important}
-/* 2) Remove "Shop bestsellers" section on home */
-.section-title,.bestseller-grid{display:none!important}
-/* 3) Home featured grid: max 4 products (rest live only in catalog) */
-section[aria-label="Featured collection"] .product-card:nth-child(n+5){display:none!important}
+/* Home = two product sections of 4 (Section 1 featured = products 1-4, Section 2 = products 5-8);
+   counts + "Shop bestsellers" title handled in JS (featured/bestsellers slices, title removed). */
 /* 4) Mobile hero lockup text bigger / more readable */
 @media (width<=800px){.hl-couture{font-size:18px!important}.hl-banda{font-size:60px!important}.hl-drop{font-size:13px!important}}
 @media (width<=520px){.hl-couture{font-size:16px!important}.hl-banda{font-size:54px!important}.hl-drop{font-size:12.5px!important}}
-/* (bonus) fix pre-existing overlap: long product names collided with price -> let name wrap */
-.product-copy{min-width:0!important}
-.product-copy strong{white-space:normal!important;overflow-wrap:anywhere}
-.product-price{flex:0 0 auto!important;white-space:nowrap!important}
 /* 4b) raise mobile hero text so bigger lockup clears the SHOP NOW button */
 @media (width<=800px){.hero-lockup-text{top:288px!important}}
 @media (width<=520px){.hero-lockup-text{top:220px!important}}
+/* (bonus) long product names no longer overlap the price */
+.product-copy{min-width:0!important}
+.product-copy strong{white-space:normal!important;overflow-wrap:anywhere}
+.product-price{flex:0 0 auto!important;white-space:nowrap!important}
