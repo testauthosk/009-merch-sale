@@ -19766,7 +19766,7 @@ function uh() {
                     href: Zm(`/`),
                     children: `Shipping`
                 }), (0, Z.jsx)(`a`, {
-                    href: Zm(`/`),
+                    href: Zm(`/size-guide`),
                     children: `Size guide`
                 })]
             }), (0, Z.jsxs)(`div`, {
@@ -19808,6 +19808,33 @@ var dh = {
         ease: Qm
     }
 };
+
+function Sg() {
+    return (0, Z.jsxs)(`main`, {
+        className: `size-guide-page`,
+        children: [(0, Z.jsxs)(`div`, {
+            className: `size-guide-inner`,
+            children: [(0, Z.jsx)(`h1`, {
+                children: `Size guide`
+            }), (0, Z.jsxs)(`div`, {
+                className: `size-guide-grid`,
+                children: [(0, Z.jsx)(`img`, {
+                    src: `./assets/store/size-hoodie.png`,
+                    alt: `Hoodies size chart`,
+                    loading: `lazy`
+                }), (0, Z.jsx)(`img`, {
+                    src: `./assets/store/size-tshirt.png`,
+                    alt: `T-shirts size chart`,
+                    loading: `lazy`
+                }), (0, Z.jsx)(`img`, {
+                    src: `./assets/store/size-shorts.png`,
+                    alt: `Shorts size chart`,
+                    loading: `lazy`
+                })]
+            })]
+        }), (0, Z.jsx)(uh, {})]
+    })
+}
 
 function fh({
     cartCount: e,
@@ -20191,7 +20218,7 @@ function hh({
                             className: `size-picker-heading`,
                             children: [(0, Z.jsxs)(`span`, {
                                 children: [`Size: `, s ? `${m.indexOf(s) + 1} (${s})` : s]
-                            }), (0, Z.jsx)(`button`, {
+                            }), p.category !== `accessories` && (0, Z.jsx)(`button`, {
                                 type: `button`,
                                 onClick: () => u(!0),
                                 children: `Size chart`
@@ -20300,37 +20327,13 @@ function hh({
                     children: [(0, Z.jsx)(gh, {
                         title: `Size chart`,
                         close: () => u(!1)
-                    }), (0, Z.jsxs)(`div`, {
+                    }), (0, Z.jsx)(`div`, {
                         className: `size-chart-content`,
-                        children: [(0, Z.jsxs)(`p`, {
-                            children: [`Model: model is 187cm and 75kg`, (0, Z.jsx)(`br`, {}), `wearing size M`]
-                        }), (0, Z.jsx)(`p`, {
-                            children: `Our size: In`
-                        }), (0, Z.jsxs)(`table`, {
-                            children: [(0, Z.jsx)(`thead`, {
-                                children: (0, Z.jsxs)(`tr`, {
-                                    children: [(0, Z.jsx)(`th`, {
-                                        children: `Size`
-                                    }), (0, Z.jsxs)(`th`, {
-                                        children: [`Chest`, (0, Z.jsx)(`br`, {}), `width`]
-                                    }), (0, Z.jsxs)(`th`, {
-                                        children: [`Sleeve`, (0, Z.jsx)(`br`, {}), `length`]
-                                    }), (0, Z.jsxs)(`th`, {
-                                        children: [`Front`, (0, Z.jsx)(`br`, {}), `length`]
-                                    }), (0, Z.jsx)(`th`, {
-                                        children: `Shoulder`
-                                    })]
-                                })
-                            }), (0, Z.jsx)(`tbody`, {
-                                children: mh.map(e => (0, Z.jsx)(`tr`, {
-                                    children: e.map((t, n) => n === 0 ? (0, Z.jsx)(`th`, {
-                                        children: t
-                                    }, t) : (0, Z.jsx)(`td`, {
-                                        children: t
-                                    }, `${e[0]}-${n}`))
-                                }, e[0]))
-                            })]
-                        })]
+                        children: (0, Z.jsx)(`img`, {
+                            className: `size-chart-img`,
+                            src: p.category === `hoodies` ? `./assets/store/size-hoodie.png` : p.category === `shorts` ? `./assets/store/size-shorts.png` : `./assets/store/size-tshirt.png`,
+                            alt: `Size chart`
+                        })
                     })]
                 })
             })
@@ -21050,7 +21053,7 @@ function xh() {
         m = (e, t) => i(n => n.filter(n => n.product.id !== e || n.size !== t)),
         h = () => i([]),
         g = e.match(/^\/catalog\/([^/]+)$/),
-        _ = e === `/catalog` ? `catalog` : e === `/checkout` ? `checkout` : e === `/order` ? `order` : g ? `product-${g[1]}` : `home`;
+        _ = e === `/catalog` ? `catalog` : e === `/checkout` ? `checkout` : e === `/order` ? `order` : e === `/size-guide` ? `size-guide` : g ? `product-${g[1]}` : `home`;
     return (0, Z.jsx)(th.Provider, {
         value: {
             code: s,
@@ -21091,7 +21094,7 @@ function xh() {
                     }) : e === `/catalog` ? (0, Z.jsx)(ph, {
                         cartCount: d,
                         openCart: () => o(!0)
-                    }) : g ? (0, Z.jsx)(hh, {
+                    }) : e === `/size-guide` ? (0, Z.jsx)(Sg, {}) : g ? (0, Z.jsx)(hh, {
                         slug: decodeURIComponent(g[1]),
                         cartCount: d,
                         openCart: () => o(!0),
