@@ -20135,6 +20135,14 @@ function hh({
         bestsellers: a
     } = Um(), o = nh(), [s, c] = (0, w.useState)(``), [l, u] = (0, w.useState)(!1), [d, f] = (0, w.useState)(!1), p = i.find(t => t.id === e) ?? i[0], m = p?.sizes && p.sizes.length ? p.sizes : [`M/L`, `L/XL`], h = new Set(p?.soldOut ?? []), g = m.filter(e => !h.has(e)), _ = g.length === 0;
     if ((0, w.useEffect)(() => {
+            if (l) {
+                let e = window.innerWidth - document.documentElement.clientWidth;
+                document.body.style.overflow = `hidden`, e > 0 && (document.body.style.paddingRight = `${e}px`)
+            } else document.body.style.overflow = ``, document.body.style.paddingRight = ``;
+            return () => {
+                document.body.style.overflow = ``, document.body.style.paddingRight = ``
+            }
+        }, [l]), (0, w.useEffect)(() => {
             p && c(e => e && !h.has(e) ? e : g[0] ?? m[0])
         }, [p]), !p) return (0, Z.jsxs)(`main`, {
         className: `item-page`,
