@@ -20190,7 +20190,7 @@ function hh({
                         children: [(0, Z.jsxs)(`div`, {
                             className: `size-picker-heading`,
                             children: [(0, Z.jsxs)(`span`, {
-                                children: [`Size: `, s]
+                                children: [`Size: `, s ? `${m.indexOf(s) + 1} (${s})` : s]
                             }), (0, Z.jsx)(`button`, {
                                 type: `button`,
                                 onClick: () => u(!0),
@@ -20198,7 +20198,7 @@ function hh({
                             })]
                         }), (0, Z.jsx)(`div`, {
                             className: `size-options`,
-                            children: m.map(e => {
+                            children: m.map((e, sizeIdx) => {
                                 let t = h.has(e);
                                 return (0, Z.jsxs)(`button`, {
                                     className: `size-option${s===e&&!t?` size-option--active`:``}${t?` size-option--out`:``}`,
@@ -20226,7 +20226,7 @@ function hh({
                                         })
                                     }), (0, Z.jsxs)(`span`, {
                                         className: `size-option__label`,
-                                        children: [e, t ? ` · Sold out` : ``]
+                                        children: [`${sizeIdx + 1} (${e})`, t ? ` · Sold out` : ``]
                                     })]
                                 }, e)
                             })
@@ -20421,7 +20421,7 @@ function _h({
                             children: [(0, Z.jsxs)(`h3`, {
                                 children: [e.product.name, (0, Z.jsx)(`br`, {}), e.product.subtitle]
                             }), (0, Z.jsxs)(`p`, {
-                                children: [`Size: `, e.size]
+                                children: [`Size: `, `${(e.product.sizes || [`M/L`, `L/XL`]).indexOf(e.size) + 1} (${e.size})`]
                             })]
                         }), (0, Z.jsxs)(`div`, {
                             className: `cart-item-actions`,
@@ -20863,7 +20863,7 @@ function yh({
                         children: [(0, Z.jsx)(`b`, {
                             children: e.product.name
                         }), (0, Z.jsxs)(`span`, {
-                            children: [e.product.subtitle, ` · `, e.size, ` · ×`, e.quantity]
+                            children: [e.product.subtitle, ` · `, `${(e.product.sizes || [`M/L`, `L/XL`]).indexOf(e.size) + 1} (${e.size})`, ` · ×`, e.quantity]
                         })]
                     }), (0, Z.jsx)(`span`, {
                         className: `checkout-line-price`,
