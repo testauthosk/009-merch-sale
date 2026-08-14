@@ -627,7 +627,7 @@ async function renderStats(){
     STATS_VIEW=b.dataset.v;
     vseg.querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));
     _pill(vseg);
-    $("#period-wrap").style.visibility = STATS_VIEW==="orders"?"visible":"hidden";
+    $("#period-wrap").style.visibility = "visible";
     _destroyCharts();
     STATS_VIEW==="orders"?drawOrdersStats():drawActionsStats();
   }));
@@ -635,7 +635,7 @@ async function renderStats(){
     STATS_PERIOD=b.dataset.p; STATS_RANGE=null;
     pseg.querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));
     $("#cal-btn").classList.remove("active"); $("#cal-pop").classList.add("hidden");
-    _pill(pseg); applyPeriod();
+    _pill(pseg); STATS_VIEW==="orders"?applyPeriod():drawActionsStats();
   }));
   $("#cal-btn").addEventListener("click",e=>{ e.stopPropagation(); $("#cal-pop").classList.toggle("hidden"); });
   $("#cal-pop").addEventListener("click",e=>e.stopPropagation());
@@ -647,7 +647,7 @@ async function renderStats(){
     STATS_PERIOD="custom"; STATS_RANGE={from:f,to:t};
     pseg.querySelectorAll("button").forEach(x=>x.classList.remove("active")); _pill(pseg);
     $("#cal-btn").classList.add("active"); $("#cal-pop").classList.add("hidden");
-    applyPeriod();
+    STATS_VIEW==="orders"?applyPeriod():drawActionsStats();
   });
   $("#period-wrap").style.visibility = STATS_VIEW==="orders"?"visible":"hidden";
   STATS_VIEW==="orders"?drawOrdersStats():drawActionsStats();
@@ -726,37 +726,44 @@ function applyPeriod(){
   if(se) se.classList.toggle("hidden",!!topSize.length);
 }
 
-function drawActionsStats(){
-  $("#stats-body").innerHTML=`
-   <div class="kpis" style="opacity:.55">
-     <div class="kpi"><div class="k-label">Посещения</div><div class="k-val">—</div><div class="k-sub">за период</div></div>
-     <div class="kpi"><div class="k-label">Уникальные</div><div class="k-val">—</div><div class="k-sub">посетители</div></div>
-     <div class="kpi"><div class="k-label">Ср. время на сайте</div><div class="k-val">—</div><div class="k-sub">за сессию</div></div>
-     <div class="kpi"><div class="k-label">Конверсия</div><div class="k-val">—</div><div class="k-sub">визит → оплата</div></div>
+const fmtDur=s=>{ s=Math.round(Number(s)||0); return s>=60 ? Math.floor(s/60)+"м "+(s%60)+"с" : s+"с"; };
+async function drawActionsStats(){
+  const body=$("#stats-body");
+  body.innerHTML='<p class="muted" style="padding:16px 0">Загрузка аналитики…</p>';
+  const {start,end,label}=periodInfo();
+  let d=null;
+  try{ d=await pb.send("/api/shop/analytics",{method:"GET",query:{from:ymd(start),to:ymd(end)}}); }catch(e){ d=null; }
+  if(STATS_VIEW!=="actions") return;
+  if(!d || d.configured===false){
+    body.innerHTML=`<div class="ph-panel"><span class="ph-badge">PostHog · EU</span>
+      <h3>Аналитика подключается…</h3>
+      <p>Как только на сайт пойдёт трафик — здесь появятся посещения, страны, время на сайте, источники, устройства и воронка. Если сообщение висит долго — проверю ключ.</p></div>`;
+    return;
+  }
+  const k=d.kpis||{};
+  const barList=(arr,unit)=>{
+    if(!arr||!arr.length) return '<p class="muted" style="margin:6px 0">Нет данных за период.</p>';
+    const max=Math.max(1,...arr.map(x=>x.count));
+    return arr.map(x=>`<div class="bar-row"><span class="lab">${esc(x.name)}</span><span class="track"><i style="width:${Math.round(x.count/max*100)}%"></i></span><span class="num">${x.count}${unit||""}</span></div>`).join("");
+  };
+  const fn=d.funnel||[]; const fmax=Math.max(1,...fn.map(x=>x.n));
+  const empty=(k.pageviews||0)===0;
+  body.innerHTML=`
+   <div class="kpis">
+     <div class="kpi"><div class="k-label">Посещения · ${label}</div><div class="k-val">${k.pageviews||0}</div><div class="k-sub">просмотры страниц</div></div>
+     <div class="kpi"><div class="k-label">Уникальные</div><div class="k-val">${k.uniques||0}</div><div class="k-sub">посетители</div></div>
+     <div class="kpi"><div class="k-label">Ср. время на сайте</div><div class="k-val">${fmtDur(k.avg_seconds)}</div><div class="k-sub">за сессию</div></div>
+     <div class="kpi"><div class="k-label">Конверсия</div><div class="k-val">${k.conversion||0}%</div><div class="k-sub">визит → оплата</div></div>
+   </div>
+   <div class="panel"><div class="sec-title" style="margin-top:0">Воронка покупки</div>
+     <div class="funnel">${fn.map(s=>`<div class="fn"><span>${esc(s.step)}</span><i style="width:${Math.round(s.n/fmax*100)}%"></i><b>${s.n}</b></div>`).join("")}</div>
    </div>
    <div class="two" style="margin-top:16px">
-     <div class="panel"><div class="sec-title" style="margin-top:0">Воронка покупки</div>
-       <div class="funnel">
-         <div class="fn"><span>Просмотр товара</span><i style="width:100%"></i><b>—</b></div>
-         <div class="fn"><span>В корзину</span><i style="width:62%"></i><b>—</b></div>
-         <div class="fn"><span>Оформление</span><i style="width:38%"></i><b>—</b></div>
-         <div class="fn"><span>Оплата</span><i style="width:22%"></i><b>—</b></div>
-       </div>
-     </div>
-     <div class="panel"><div class="sec-title" style="margin-top:0">Страны · источники · устройства</div>
-       <table class="otable"><tbody>
-         <tr><td>🌍 География (страны / города)</td><td style="text-align:right" class="muted">—</td></tr>
-         <tr><td>🔗 Источники (Google / прямые / соцсети)</td><td style="text-align:right" class="muted">—</td></tr>
-         <tr><td>📱 Устройства (моб. / десктоп)</td><td style="text-align:right" class="muted">—</td></tr>
-         <tr><td>⏱ Время на сайте · глубина просмотра</td><td style="text-align:right" class="muted">—</td></tr>
-       </tbody></table>
-     </div>
+     <div class="panel"><div class="sec-title" style="margin-top:0">Страны</div>${barList(d.countries)}</div>
+     <div class="panel"><div class="sec-title" style="margin-top:0">Источники</div>${barList(d.sources)}</div>
    </div>
-   <div class="ph-panel" style="margin-top:16px">
-     <span class="ph-badge">PostHog · EU</span>
-     <p style="margin-top:12px">Здесь будет подробная аналитика: <b>посещения и уникальные</b>, <b>страны и города</b> по гео, <b>время на сайте</b> и глубина просмотра, <b>источники трафика</b> и устройства, карта кликов, запись сессий и воронка с конверсией на каждом шаге.</p>
-     <p class="muted">Подключается — плашка согласия на сайте уже стоит; данные пойдут после первого «Accept» и трафика, и всё это заполнится автоматически.</p>
-   </div>`;
+   <div class="panel"><div class="sec-title" style="margin-top:0">Устройства</div>${barList(d.devices)}</div>
+   ${empty?'<p class="muted" style="margin-top:16px">Пока пусто — данные появятся, как только на сайт зайдут посетители (боты не считаются). Всё подключено и собирается автоматически.</p>':''}`;
 }
 
 /* ---------- notify recipients (кто видит новые заказы в боте) ---------- */
