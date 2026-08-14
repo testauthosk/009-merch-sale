@@ -162,6 +162,32 @@
   .bar-row .track { flex:1; height:16px; background:#1a1a1c; }
   .bar-row .track i { display:block; height:100%; background:var(--yellow); }
   .bar-row .num { width:64px; text-align:right; color:var(--muted); }
+  /* stats v2: pills · period · charts · actions */
+  .stats-head { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin:6px 0 20px; }
+  .seg { position:relative; display:inline-flex; background:#0e0e10; border:1px solid var(--line); border-radius:999px; padding:4px; }
+  .seg .seg-pill { position:absolute; left:0; top:4px; bottom:4px; width:0; background:var(--yellow); border-radius:999px; z-index:0; transition:transform .34s cubic-bezier(.4,0,.2,1), width .34s cubic-bezier(.4,0,.2,1), opacity .2s; }
+  .seg button { position:relative; z-index:1; background:transparent; border:0; color:var(--muted); padding:9px 20px; border-radius:999px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; transition:color .25s; font-family:var(--mono); }
+  .seg button.active { color:#000; }
+  .seg.seg-sm button { padding:7px 14px; font-size:11px; }
+  .period-wrap { display:flex; align-items:center; gap:8px; }
+  .cal-box { position:relative; }
+  .cal-btn { display:flex; align-items:center; justify-content:center; width:34px; height:34px; background:#0e0e10; border:1px solid var(--line); border-radius:8px; color:var(--muted); transition:color .2s,border-color .2s,background .2s; }
+  .cal-btn:hover { color:var(--fg); border-color:#555; }
+  .cal-btn.active { color:#000; background:var(--yellow); border-color:var(--yellow); }
+  .cal-pop { position:absolute; right:0; top:42px; z-index:40; background:var(--panel); border:1px solid var(--line); padding:14px; display:flex; flex-direction:column; gap:10px; width:210px; box-shadow:0 14px 34px rgba(0,0,0,.6); }
+  .cal-pop label { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; margin:0; }
+  .cal-pop input { margin:0; padding:7px 9px; color-scheme:dark; flex:1; }
+  .cal-pop .btn { width:100%; margin-top:2px; }
+  .panel { border:1px solid var(--line); background:var(--panel); padding:16px 16px 8px; margin-top:14px; }
+  .ph-panel { border:1px solid var(--line); background:var(--panel); padding:28px 24px; }
+  .ph-panel h3 { margin:14px 0 8px; font-size:16px; color:#fff; letter-spacing:.02em; }
+  .ph-panel p { color:#bdbdbe; max-width:640px; line-height:1.6; margin:0 0 10px; }
+  .ph-badge { display:inline-block; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--yellow); border:1px solid #4a4426; border-radius:999px; padding:4px 12px; }
+  .funnel { margin:22px 0 6px; max-width:560px; }
+  .funnel .fn { display:grid; grid-template-columns:150px 1fr 34px; align-items:center; gap:12px; margin:9px 0; font-size:12px; color:#bdbdbe; }
+  .funnel .fn i { display:block; height:22px; background:linear-gradient(90deg,#ebcc00,#9c8f22); opacity:.45; border-radius:2px; }
+  .funnel .fn b { color:var(--muted); font-weight:400; text-align:right; }
+  @media(max-width:600px){ .stats-head { flex-direction:column; align-items:stretch; } .period-wrap { justify-content:space-between; } }
 </style>
 </head>
 <body>
@@ -534,52 +560,185 @@ async function renderOrders(){
   draw();
 }
 
-/* ---------- stats (выручка/воронка из оплаченных заказов) ---------- */
+/* ---------- stats: заказы + действия · период-селектор · ApexCharts ---------- */
 const PAID_STATES=["paid","processing","shipped","done"];
 const money=(n)=>"€"+(Math.round((Number(n)||0)*100)/100).toLocaleString("en-US"); // магазин только в евро
+const DAY=86400000;
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const fmtD=d=>d.getDate()+"."+(d.getMonth()+1);
+const CAL_SVG='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg>';
+let STATS_VIEW="orders", STATS_PERIOD="30d", STATS_RANGE=null;
+let _apex=null, _allOrders=null, _revChart=null, _sizeChart=null;
+async function getApex(){ if(_apex) return _apex; try{ _apex=(await import("https://esm.sh/apexcharts@3.54.1")).default; }catch(e){ _apex=null; } return _apex; }
+function _destroyCharts(){ [_revChart,_sizeChart].forEach(c=>{try{c&&c.destroy();}catch(e){}}); _revChart=null; _sizeChart=null; }
+function _pill(seg){ if(!seg)return; const b=seg.querySelector("button.active"), p=seg.querySelector(".seg-pill"); if(!p)return; if(b){ p.style.width=b.offsetWidth+"px"; p.style.transform="translateX("+b.offsetLeft+"px)"; p.style.opacity="1"; } else { p.style.opacity="0"; } }
+
+function periodInfo(){
+  const now=new Date();
+  if(STATS_PERIOD==="today"){ const s=new Date(now); s.setHours(0,0,0,0); return {start:s,end:now,gran:"hour",label:"сегодня"}; }
+  if(STATS_PERIOD==="7d"){ const s=new Date(now.getTime()-6*DAY); s.setHours(0,0,0,0); return {start:s,end:now,gran:"day",label:"7 дней"}; }
+  if(STATS_PERIOD==="custom"&&STATS_RANGE){ const s=new Date(STATS_RANGE.from+"T00:00:00"); const e=new Date(STATS_RANGE.to+"T23:59:59"); const dd=Math.round((e-s)/DAY); return {start:s,end:e,gran: dd<=1?"hour":"day", label: fmtD(s)+"–"+fmtD(e)}; }
+  const s=new Date(now.getTime()-29*DAY); s.setHours(0,0,0,0); return {start:s,end:now,gran:"day",label:"30 дней"};
+}
+function buildBuckets(paid,start,end,gran){
+  const cats=[]; const map={};
+  if(gran==="hour"){
+    for(let h=0;h<24;h++){ cats.push(h+":00"); map[h]=0; }
+    paid.forEach(o=>{ const d=new Date(o.created); if(d>=start&&d<=end) map[d.getHours()]=(map[d.getHours()]||0)+(Number(o.total)||0); });
+    return {cats, vals:cats.map((_,h)=>Math.round((map[h]||0)*100)/100)};
+  }
+  const s=new Date(start); s.setHours(0,0,0,0); const e=new Date(end); e.setHours(0,0,0,0); const keys=[];
+  for(let t=s.getTime(); t<=e.getTime(); t+=DAY){ const d=new Date(t); const k=ymd(d); keys.push(k); cats.push(fmtD(d)); map[k]=0; }
+  paid.forEach(o=>{ const k=ymd(new Date(o.created)); if(k in map) map[k]+=Number(o.total)||0; });
+  return {cats, vals:keys.map(k=>Math.round(map[k]*100)/100)};
+}
+
 async function renderStats(){
-  $("#view").innerHTML=`<div class="canvas"><div class="sec-title">Stats <span class="hint">· продажи из оплаченных заказов</span></div><div id="sw">Loading…</div></div>`;
-  const orders=await pb.collection("orders").getFullList({sort:"-created"});
-  const now=Date.now(), DAY=86400000;
-  const paid=orders.filter(o=>PAID_STATES.includes(o.status));
-  const inLast=(o,days)=>(now-new Date(o.created).getTime())<=days*DAY;
-  let revAll=0,rev30=0,rev7=0;
-  paid.forEach(o=>{ const t=Number(o.total)||0; revAll+=t; if(inLast(o,30))rev30+=t; if(inLast(o,7))rev7+=t; });
-  let units=0; paid.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach(i=>units+=Number(i.qty)||0));
-  const aov=paid.length?revAll/paid.length:0;
-  const cnt=s=>orders.filter(o=>o.status===s).length;
-  const prod={},size={};
-  paid.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach(i=>{
-    const q=Number(i.qty)||0, r=(Number(i.price)||0)*q, nm=i.name||"—", sz=i.size||"—";
-    prod[nm]=prod[nm]||{u:0,r:0}; prod[nm].u+=q; prod[nm].r+=r;
-    size[sz]=(size[sz]||0)+q;
+  $("#view").innerHTML=`<div class="canvas">
+    <div class="stats-head">
+      <div class="seg" id="view-seg">
+        <span class="seg-pill"></span>
+        <button data-v="orders" class="${STATS_VIEW==="orders"?"active":""}">Заказы</button>
+        <button data-v="actions" class="${STATS_VIEW==="actions"?"active":""}">Действия на сайте</button>
+      </div>
+      <div class="period-wrap" id="period-wrap">
+        <div class="seg seg-sm" id="per-seg">
+          <span class="seg-pill"></span>
+          <button data-p="today" class="${STATS_PERIOD==="today"?"active":""}">1 день</button>
+          <button data-p="7d" class="${STATS_PERIOD==="7d"?"active":""}">Неделя</button>
+          <button data-p="30d" class="${STATS_PERIOD==="30d"?"active":""}">30 дней</button>
+        </div>
+        <div class="cal-box">
+          <button class="cal-btn ${STATS_PERIOD==="custom"?"active":""}" id="cal-btn" title="Свой период">${CAL_SVG}</button>
+          <div class="cal-pop hidden" id="cal-pop">
+            <label>С<input type="date" id="cal-from"></label>
+            <label>По<input type="date" id="cal-to"></label>
+            <button class="btn btn--sm" id="cal-apply">Применить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="stats-body"></div>
+  </div>`;
+  const vseg=$("#view-seg"), pseg=$("#per-seg");
+  requestAnimationFrame(()=>{ _pill(vseg); _pill(pseg); });
+  vseg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    if(STATS_VIEW===b.dataset.v) return;
+    STATS_VIEW=b.dataset.v;
+    vseg.querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));
+    _pill(vseg);
+    $("#period-wrap").style.visibility = STATS_VIEW==="orders"?"visible":"hidden";
+    _destroyCharts();
+    STATS_VIEW==="orders"?drawOrdersStats():drawActionsStats();
   }));
+  pseg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    STATS_PERIOD=b.dataset.p; STATS_RANGE=null;
+    pseg.querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));
+    $("#cal-btn").classList.remove("active"); $("#cal-pop").classList.add("hidden");
+    _pill(pseg); applyPeriod();
+  }));
+  $("#cal-btn").addEventListener("click",e=>{ e.stopPropagation(); $("#cal-pop").classList.toggle("hidden"); });
+  $("#cal-pop").addEventListener("click",e=>e.stopPropagation());
+  document.addEventListener("click",()=>{ const p=$("#cal-pop"); if(p) p.classList.add("hidden"); });
+  $("#cal-apply").addEventListener("click",()=>{
+    const f=$("#cal-from").value, t=$("#cal-to").value;
+    if(!f||!t){ toast("Выберите обе даты"); return; }
+    if(f>t){ toast("Дата «С» позже «По»"); return; }
+    STATS_PERIOD="custom"; STATS_RANGE={from:f,to:t};
+    pseg.querySelectorAll("button").forEach(x=>x.classList.remove("active")); _pill(pseg);
+    $("#cal-btn").classList.add("active"); $("#cal-pop").classList.add("hidden");
+    applyPeriod();
+  });
+  $("#period-wrap").style.visibility = STATS_VIEW==="orders"?"visible":"hidden";
+  STATS_VIEW==="orders"?drawOrdersStats():drawActionsStats();
+}
+
+async function drawOrdersStats(){
+  const body=$("#stats-body");
+  body.innerHTML=`
+   <div class="kpis" id="kpis"></div>
+   <div class="panel"><div class="sec-title" style="margin-top:0" id="rev-title">Выручка</div><div id="rev-chart"></div></div>
+   <div class="two" style="margin-top:16px">
+     <div class="panel"><div class="sec-title" style="margin-top:0">Топ товаров</div><div id="prod-wrap"></div></div>
+     <div class="panel"><div class="sec-title" style="margin-top:0">Топ размеров</div><div id="size-chart"></div><p class="muted hidden" id="size-empty">Нет продаж за период.</p></div>
+   </div>`;
+  if(!_allOrders) _allOrders=await pb.collection("orders").getFullList({sort:"-created"});
+  _destroyCharts();
+  const ApexCharts=await getApex();
+  if(ApexCharts && STATS_VIEW==="orders"){
+    _revChart=new ApexCharts(document.querySelector("#rev-chart"),{
+      chart:{type:"bar",height:300,background:"transparent",fontFamily:"inherit",toolbar:{show:false},animations:{enabled:true,easing:"easeinout",speed:750,dynamicAnimation:{enabled:true,speed:600}}},
+      theme:{mode:"dark"},
+      series:[{name:"Выручка",data:[]}],
+      xaxis:{categories:[],tickAmount:8,labels:{rotate:0,hideOverlappingLabels:true,style:{colors:"#7a7a7a",fontSize:"10px"}},axisBorder:{color:"#222"},axisTicks:{color:"#222"}},
+      yaxis:{labels:{style:{colors:"#7a7a7a"},formatter:v=>"€"+Math.round(v)}},
+      colors:["#ebcc00"],
+      plotOptions:{bar:{columnWidth:"58%",borderRadius:3}},
+      fill:{type:"gradient",gradient:{shade:"dark",type:"vertical",gradientToColors:["#8a7d1a"],shadeIntensity:.35,opacityFrom:.95,opacityTo:.8,stops:[0,100]}},
+      grid:{borderColor:"#1c1c1c",strokeDashArray:3},
+      dataLabels:{enabled:false},
+      tooltip:{theme:"dark",y:{formatter:v=>money(v)}}
+    });
+    _revChart.render();
+    _sizeChart=new ApexCharts(document.querySelector("#size-chart"),{
+      chart:{type:"donut",height:280,background:"transparent",fontFamily:"inherit",animations:{enabled:true,speed:700,dynamicAnimation:{enabled:true,speed:500}}},
+      theme:{mode:"dark"}, series:[], labels:[],
+      colors:["#ebcc00","#9c8f22","#5f571f","#3a3620","#262418"],
+      legend:{position:"bottom",labels:{colors:"#bdbdbe"}},
+      dataLabels:{enabled:true,formatter:v=>Math.round(v)+"%",style:{colors:["#000"]}},
+      stroke:{colors:["#0e0e10"],width:2},
+      tooltip:{theme:"dark",y:{formatter:v=>v+" шт."}},
+      plotOptions:{pie:{donut:{size:"62%",labels:{show:true,total:{show:true,label:"Единиц",color:"#7a7a7a",formatter:()=>String(_lastUnits)}}}}}
+    });
+    _sizeChart.render();
+  }
+  applyPeriod();
+}
+
+let _lastUnits=0;
+function applyPeriod(){
+  if(STATS_VIEW!=="orders") return;
+  const orders=_allOrders||[];
+  const {start,end,gran,label}=periodInfo();
+  const inWin=o=>{ const t=new Date(o.created).getTime(); return t>=start.getTime() && t<=end.getTime(); };
+  const paid=orders.filter(o=>PAID_STATES.includes(o.status) && inWin(o));
+  const rev=paid.reduce((s,o)=>s+(Number(o.total)||0),0);
+  let units=0; paid.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach(i=>units+=Number(i.qty)||0)); _lastUnits=units;
+  const aov=paid.length?rev/paid.length:0;
+  const pend=orders.filter(o=>o.status==="pending"&&inWin(o)).length;
+  const canc=orders.filter(o=>o.status==="cancelled"&&inWin(o)).length;
+  const kp=$("#kpis"); if(kp) kp.innerHTML=`
+     <div class="kpi"><div class="k-label">Выручка · ${label}</div><div class="k-val">${money(rev)}</div><div class="k-sub">${paid.length} оплаченных</div></div>
+     <div class="kpi"><div class="k-label">Оплаченных заказов</div><div class="k-val">${paid.length}</div><div class="k-sub">ожидают: <b>${pend}</b> · отменено: <b>${canc}</b></div></div>
+     <div class="kpi"><div class="k-label">Средний чек</div><div class="k-val">${money(aov)}</div><div class="k-sub">за период</div></div>
+     <div class="kpi"><div class="k-label">Продано единиц</div><div class="k-val">${units}</div><div class="k-sub">за период</div></div>`;
+  const rt=$("#rev-title"); if(rt) rt.textContent="Выручка · "+label;
+  const {cats,vals}=buildBuckets(paid,start,end,gran);
+  if(_revChart){ try{ _revChart.updateOptions({ series:[{name:"Выручка",data:vals}], xaxis:{categories:cats} }, false, true); }catch(e){} }
+  const prod={},size={};
+  paid.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach(i=>{ const q=Number(i.qty)||0,r=(Number(i.price)||0)*q,nm=i.name||"—",sz=i.size||"—"; prod[nm]=prod[nm]||{u:0,r:0};prod[nm].u+=q;prod[nm].r+=r;size[sz]=(size[sz]||0)+q; }));
   const topProd=Object.entries(prod).sort((a,b)=>b[1].u-a[1].u).slice(0,8);
   const topSize=Object.entries(size).sort((a,b)=>b[1]-a[1]);
-  const maxSize=Math.max(1,...topSize.map(s=>s[1]));
-  const days=[]; for(let i=29;i>=0;i--){ const d=new Date(now-i*DAY); days.push({key:d.toISOString().slice(0,10),lab:(d.getMonth()+1)+"/"+d.getDate(),val:0}); }
-  const dmap=Object.fromEntries(days.map(d=>[d.key,d]));
-  paid.forEach(o=>{ const k=new Date(o.created).toISOString().slice(0,10); if(dmap[k]) dmap[k].val+=Number(o.total)||0; });
-  const maxDay=Math.max(1,...days.map(d=>d.val));
-  $("#sw").innerHTML=`
-   <div class="kpis">
-     <div class="kpi"><div class="k-label">Выручка · всего</div><div class="k-val">${money(revAll)}</div><div class="k-sub">30 дн: <b>${money(rev30)}</b> · 7 дн: <b>${money(rev7)}</b></div></div>
-     <div class="kpi"><div class="k-label">Оплаченных заказов</div><div class="k-val">${paid.length}</div><div class="k-sub">ожидают: <b>${cnt("pending")}</b> · отменено: <b>${cnt("cancelled")}</b></div></div>
-     <div class="kpi"><div class="k-label">Средний чек</div><div class="k-val">${money(aov)}</div><div class="k-sub">по оплаченным</div></div>
-     <div class="kpi"><div class="k-label">Продано единиц</div><div class="k-val">${units}</div><div class="k-sub">всего товаров</div></div>
-   </div>
-   <div class="sec-title">Выручка по дням · 30 дней</div>
-   <div class="chart">${days.map(d=>`<div class="bar" title="${d.lab}: ${money(d.val)}"><i style="height:${Math.round(d.val/maxDay*100)}%"></i></div>`).join("")}</div>
-   <div class="chart-x"><span>${days[0].lab}</span><span>${days[15].lab}</span><span>${days[29].lab}</span></div>
-   <div class="two" style="margin-top:30px">
-     <div>
-       <div class="sec-title" style="margin-top:0">Топ товаров</div>
-       ${topProd.length?`<table class="otable"><thead><tr><th>Товар</th><th style="text-align:right">Шт.</th><th style="text-align:right">Выручка</th></tr></thead><tbody>${topProd.map(([n,v])=>`<tr><td>${esc(n)}</td><td style="text-align:right">${v.u}</td><td style="text-align:right" class="muted">${money(v.r)}</td></tr>`).join("")}</tbody></table>`:'<p class="muted">Пока нет продаж.</p>'}
+  const pw=$("#prod-wrap"); if(pw) pw.innerHTML= topProd.length?`<table class="otable"><thead><tr><th>Товар</th><th style="text-align:right">Шт.</th><th style="text-align:right">Выручка</th></tr></thead><tbody>${topProd.map(([n,v])=>`<tr><td>${esc(n)}</td><td style="text-align:right">${v.u}</td><td style="text-align:right" class="muted">${money(v.r)}</td></tr>`).join("")}</tbody></table>`:'<p class="muted" style="margin:6px 0">Нет продаж за период.</p>';
+  const se=$("#size-empty"), sc=document.querySelector("#size-chart");
+  if(_sizeChart){ try{ _sizeChart.updateOptions({ series:topSize.map(s=>s[1]), labels:topSize.map(s=>s[0]) }, false, true); }catch(e){} }
+  if(sc) sc.classList.toggle("hidden",!topSize.length);
+  if(se) se.classList.toggle("hidden",!!topSize.length);
+}
+
+function drawActionsStats(){
+  $("#stats-body").innerHTML=`
+   <div class="ph-panel">
+     <span class="ph-badge">PostHog · EU</span>
+     <h3>Аналитика действий на сайте</h3>
+     <p>Поведение посетителей: <b>посещения</b> и уникальные, <b>источники трафика</b>, карта кликов, запись сессий и воронка покупки с конверсией на каждом шаге.</p>
+     <div class="funnel">
+       <div class="fn"><span>Просмотр товара</span><i style="width:100%"></i><b>—</b></div>
+       <div class="fn"><span>В корзину</span><i style="width:62%"></i><b>—</b></div>
+       <div class="fn"><span>Оформление</span><i style="width:38%"></i><b>—</b></div>
+       <div class="fn"><span>Оплата</span><i style="width:22%"></i><b>—</b></div>
      </div>
-     <div>
-       <div class="sec-title" style="margin-top:0">Топ размеров</div>
-       ${topSize.length?topSize.map(([s,q])=>`<div class="bar-row"><span class="lab">${esc(s)}</span><span class="track"><i style="width:${Math.round(q/maxSize*100)}%"></i></span><span class="num">${q} шт.</span></div>`).join(""):'<p class="muted">Пока нет продаж.</p>'}
-     </div>
+     <p class="muted" style="margin-top:18px">Подключается. Плашка согласия на сайте уже стоит — события начнут собираться после первого «Accept» и первого трафика, и цифры появятся здесь автоматически.</p>
    </div>`;
 }
 
