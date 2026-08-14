@@ -536,22 +536,17 @@ async function renderOrders(){
 
 /* ---------- stats (выручка/воронка из оплаченных заказов) ---------- */
 const PAID_STATES=["paid","processing","shipped","done"];
-const curSym=c=>({USD:"$",EUR:"€"}[c]||(c?c+" ":""));
-const money=(n,c)=>curSym(c)+(Math.round((Number(n)||0)*100)/100).toLocaleString("en-US");
+const money=(n)=>"€"+(Math.round((Number(n)||0)*100)/100).toLocaleString("en-US"); // магазин только в евро
 async function renderStats(){
   $("#view").innerHTML=`<div class="canvas"><div class="sec-title">Stats <span class="hint">· продажи из оплаченных заказов</span></div><div id="sw">Loading…</div></div>`;
   const orders=await pb.collection("orders").getFullList({sort:"-created"});
   const now=Date.now(), DAY=86400000;
   const paid=orders.filter(o=>PAID_STATES.includes(o.status));
   const inLast=(o,days)=>(now-new Date(o.created).getTime())<=days*DAY;
-  const revAll={},rev30={},rev7={};
-  const add=(m,o)=>{const c=o.currency||"USD"; m[c]=(m[c]||0)+(Number(o.total)||0);};
-  paid.forEach(o=>{ add(revAll,o); if(inLast(o,30))add(rev30,o); if(inLast(o,7))add(rev7,o); });
-  const primaryCur=Object.keys(revAll).sort((a,b)=>(revAll[b]||0)-(revAll[a]||0))[0]||"USD";
-  const sumNum=m=>Object.values(m).reduce((s,v)=>s+v,0);
-  const revStr=m=>{const ks=Object.keys(m).filter(k=>m[k]>0); return ks.length?ks.map(k=>money(m[k],k)).join(" + "):money(0,primaryCur);};
+  let revAll=0,rev30=0,rev7=0;
+  paid.forEach(o=>{ const t=Number(o.total)||0; revAll+=t; if(inLast(o,30))rev30+=t; if(inLast(o,7))rev7+=t; });
   let units=0; paid.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach(i=>units+=Number(i.qty)||0));
-  const aov=paid.length?sumNum(revAll)/paid.length:0;
+  const aov=paid.length?revAll/paid.length:0;
   const cnt=s=>orders.filter(o=>o.status===s).length;
   const prod={},size={};
   paid.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach(i=>{
@@ -568,18 +563,18 @@ async function renderStats(){
   const maxDay=Math.max(1,...days.map(d=>d.val));
   $("#sw").innerHTML=`
    <div class="kpis">
-     <div class="kpi"><div class="k-label">Выручка · всего</div><div class="k-val">${revStr(revAll)}</div><div class="k-sub">30 дн: <b>${revStr(rev30)}</b> · 7 дн: <b>${revStr(rev7)}</b></div></div>
+     <div class="kpi"><div class="k-label">Выручка · всего</div><div class="k-val">${money(revAll)}</div><div class="k-sub">30 дн: <b>${money(rev30)}</b> · 7 дн: <b>${money(rev7)}</b></div></div>
      <div class="kpi"><div class="k-label">Оплаченных заказов</div><div class="k-val">${paid.length}</div><div class="k-sub">ожидают: <b>${cnt("pending")}</b> · отменено: <b>${cnt("cancelled")}</b></div></div>
-     <div class="kpi"><div class="k-label">Средний чек</div><div class="k-val">${money(aov,primaryCur)}</div><div class="k-sub">по оплаченным</div></div>
+     <div class="kpi"><div class="k-label">Средний чек</div><div class="k-val">${money(aov)}</div><div class="k-sub">по оплаченным</div></div>
      <div class="kpi"><div class="k-label">Продано единиц</div><div class="k-val">${units}</div><div class="k-sub">всего товаров</div></div>
    </div>
    <div class="sec-title">Выручка по дням · 30 дней</div>
-   <div class="chart">${days.map(d=>`<div class="bar" title="${d.lab}: ${money(d.val,primaryCur)}"><i style="height:${Math.round(d.val/maxDay*100)}%"></i></div>`).join("")}</div>
+   <div class="chart">${days.map(d=>`<div class="bar" title="${d.lab}: ${money(d.val)}"><i style="height:${Math.round(d.val/maxDay*100)}%"></i></div>`).join("")}</div>
    <div class="chart-x"><span>${days[0].lab}</span><span>${days[15].lab}</span><span>${days[29].lab}</span></div>
    <div class="two" style="margin-top:30px">
      <div>
        <div class="sec-title" style="margin-top:0">Топ товаров</div>
-       ${topProd.length?`<table class="otable"><thead><tr><th>Товар</th><th style="text-align:right">Шт.</th><th style="text-align:right">Выручка</th></tr></thead><tbody>${topProd.map(([n,v])=>`<tr><td>${esc(n)}</td><td style="text-align:right">${v.u}</td><td style="text-align:right" class="muted">${money(v.r,primaryCur)}</td></tr>`).join("")}</tbody></table>`:'<p class="muted">Пока нет продаж.</p>'}
+       ${topProd.length?`<table class="otable"><thead><tr><th>Товар</th><th style="text-align:right">Шт.</th><th style="text-align:right">Выручка</th></tr></thead><tbody>${topProd.map(([n,v])=>`<tr><td>${esc(n)}</td><td style="text-align:right">${v.u}</td><td style="text-align:right" class="muted">${money(v.r)}</td></tr>`).join("")}</tbody></table>`:'<p class="muted">Пока нет продаж.</p>'}
      </div>
      <div>
        <div class="sec-title" style="margin-top:0">Топ размеров</div>
