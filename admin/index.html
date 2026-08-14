@@ -732,7 +732,7 @@ async function drawActionsStats(){
   body.innerHTML='<p class="muted" style="padding:16px 0">Загрузка аналитики…</p>';
   const {start,end,label}=periodInfo();
   const from=ymd(start), to=ymd(end);
-  const get=(metric)=>pb.send("/api/shop/analytics",{method:"GET",query:{metric,from,to}}).catch(()=>null);
+  const get=(metric)=>pb.send("/api/shop/analytics",{method:"GET",query:{metric,from,to,_:Date.now()}}).catch(()=>null); // _ = анти-кэш, всегда свежие данные
   const [summary,countries,sources,devices]=await Promise.all([get("summary"),get("countries"),get("sources"),get("devices")]);
   if(STATS_VIEW!=="actions") return;
   if(!summary || !summary.kpis){
