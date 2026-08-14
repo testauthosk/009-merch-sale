@@ -43,6 +43,49 @@
     </script>
     <script type="module" crossorigin src="./assets/index-a7e70595.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-5036cf2e.css">
+
+    <!-- 009 analytics: cookie consent (opt-in) + PostHog. No tracking until Accept. -->
+    <style>
+      #ck-banner{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;display:flex;gap:18px;align-items:center;justify-content:center;flex-wrap:wrap;
+        background:#0a0a0b;border-top:1px solid #2a2a2a;color:#e9e9ea;padding:14px 18px;box-shadow:0 -10px 30px rgba(0,0,0,.5);
+        font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;
+        transform:translateY(110%);transition:transform .45s cubic-bezier(.22,1,.36,1)}
+      #ck-banner.show{transform:translateY(0)}
+      #ck-banner .ck-txt{max-width:620px;color:#bdbdbe}
+      #ck-banner .ck-txt b{color:#fff;font-weight:600;letter-spacing:.02em}
+      #ck-banner a{color:#ebcc00;text-decoration:none;border-bottom:1px solid rgba(235,204,0,.4)}
+      #ck-banner .ck-btns{display:flex;gap:10px}
+      #ck-banner button{cursor:pointer;border:0;padding:10px 20px;font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-family:inherit}
+      #ck-acc{background:#ebcc00;color:#000}#ck-acc:hover{background:#fff}
+      #ck-dec{background:transparent;color:#bdbdbe;border:1px solid #3a3a3a}#ck-dec:hover{border-color:#fff;color:#fff}
+      @media(max-width:600px){#ck-banner{justify-content:flex-start}#ck-banner .ck-btns{width:100%}#ck-banner button{flex:1}}
+    </style>
+    <script>
+    (function(){
+      var PH_KEY  = "__POSTHOG_KEY__";           // PostHog project API key
+      var PH_HOST = "https://eu.i.posthog.com";  // EU data region
+      if(!PH_KEY || PH_KEY.slice(0,2)==="__") return;  // not configured yet → no banner, no tracking
+      var CK = "ck_consent_009";
+      function loadPH(){
+        !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+        posthog.init(PH_KEY,{api_host:PH_HOST, capture_pageview:true, capture_pageleave:true, autocapture:true, persistence:"localStorage+cookie", session_recording:{maskAllInputs:true}});
+        window.addEventListener("hashchange",function(){try{posthog.capture("$pageview");}catch(e){}}); // hash-routed SPA
+      }
+      function hide(){var b=document.getElementById("ck-banner");if(b){b.classList.remove("show");setTimeout(function(){b&&b.remove();},480);}}
+      function grant(){try{localStorage.setItem(CK,"granted");}catch(e){}hide();loadPH();}
+      function deny(){try{localStorage.setItem(CK,"denied");}catch(e){}hide();}
+      function show(){
+        var b=document.createElement("div");b.id="ck-banner";
+        b.innerHTML='<div class="ck-txt"><b>Cookies.</b> We use analytics cookies to understand how the store is used and make it better. Nothing is tracked until you accept. See our <a href="./privacy.html" target="_blank" rel="noopener">privacy notice</a>.</div><div class="ck-btns"><button id="ck-dec">Decline</button><button id="ck-acc">Accept</button></div>';
+        document.body.appendChild(b);
+        document.getElementById("ck-acc").addEventListener("click",grant);
+        document.getElementById("ck-dec").addEventListener("click",deny);
+        requestAnimationFrame(function(){requestAnimationFrame(function(){b.classList.add("show");});});
+      }
+      function boot(){var c;try{c=localStorage.getItem(CK);}catch(e){}if(c==="granted")loadPH();else if(c!=="denied")show();}
+      if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
+    })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
