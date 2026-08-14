@@ -728,17 +728,34 @@ function applyPeriod(){
 
 function drawActionsStats(){
   $("#stats-body").innerHTML=`
-   <div class="ph-panel">
-     <span class="ph-badge">PostHog · EU</span>
-     <h3>Аналитика действий на сайте</h3>
-     <p>Поведение посетителей: <b>посещения</b> и уникальные, <b>источники трафика</b>, карта кликов, запись сессий и воронка покупки с конверсией на каждом шаге.</p>
-     <div class="funnel">
-       <div class="fn"><span>Просмотр товара</span><i style="width:100%"></i><b>—</b></div>
-       <div class="fn"><span>В корзину</span><i style="width:62%"></i><b>—</b></div>
-       <div class="fn"><span>Оформление</span><i style="width:38%"></i><b>—</b></div>
-       <div class="fn"><span>Оплата</span><i style="width:22%"></i><b>—</b></div>
+   <div class="kpis" style="opacity:.55">
+     <div class="kpi"><div class="k-label">Посещения</div><div class="k-val">—</div><div class="k-sub">за период</div></div>
+     <div class="kpi"><div class="k-label">Уникальные</div><div class="k-val">—</div><div class="k-sub">посетители</div></div>
+     <div class="kpi"><div class="k-label">Ср. время на сайте</div><div class="k-val">—</div><div class="k-sub">за сессию</div></div>
+     <div class="kpi"><div class="k-label">Конверсия</div><div class="k-val">—</div><div class="k-sub">визит → оплата</div></div>
+   </div>
+   <div class="two" style="margin-top:16px">
+     <div class="panel"><div class="sec-title" style="margin-top:0">Воронка покупки</div>
+       <div class="funnel">
+         <div class="fn"><span>Просмотр товара</span><i style="width:100%"></i><b>—</b></div>
+         <div class="fn"><span>В корзину</span><i style="width:62%"></i><b>—</b></div>
+         <div class="fn"><span>Оформление</span><i style="width:38%"></i><b>—</b></div>
+         <div class="fn"><span>Оплата</span><i style="width:22%"></i><b>—</b></div>
+       </div>
      </div>
-     <p class="muted" style="margin-top:18px">Подключается. Плашка согласия на сайте уже стоит — события начнут собираться после первого «Accept» и первого трафика, и цифры появятся здесь автоматически.</p>
+     <div class="panel"><div class="sec-title" style="margin-top:0">Страны · источники · устройства</div>
+       <table class="otable"><tbody>
+         <tr><td>🌍 География (страны / города)</td><td style="text-align:right" class="muted">—</td></tr>
+         <tr><td>🔗 Источники (Google / прямые / соцсети)</td><td style="text-align:right" class="muted">—</td></tr>
+         <tr><td>📱 Устройства (моб. / десктоп)</td><td style="text-align:right" class="muted">—</td></tr>
+         <tr><td>⏱ Время на сайте · глубина просмотра</td><td style="text-align:right" class="muted">—</td></tr>
+       </tbody></table>
+     </div>
+   </div>
+   <div class="ph-panel" style="margin-top:16px">
+     <span class="ph-badge">PostHog · EU</span>
+     <p style="margin-top:12px">Здесь будет подробная аналитика: <b>посещения и уникальные</b>, <b>страны и города</b> по гео, <b>время на сайте</b> и глубина просмотра, <b>источники трафика</b> и устройства, карта кликов, запись сессий и воронка с конверсией на каждом шаге.</p>
+     <p class="muted">Подключается — плашка согласия на сайте уже стоит; данные пойдут после первого «Accept» и трафика, и всё это заполнится автоматически.</p>
    </div>`;
 }
 
