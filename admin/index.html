@@ -731,22 +731,23 @@ async function drawActionsStats(){
   const body=$("#stats-body");
   body.innerHTML='<p class="muted" style="padding:16px 0">Загрузка аналитики…</p>';
   const {start,end,label}=periodInfo();
-  let d=null;
-  try{ d=await pb.send("/api/shop/analytics",{method:"GET",query:{from:ymd(start),to:ymd(end)}}); }catch(e){ d=null; }
+  const from=ymd(start), to=ymd(end);
+  const get=(metric)=>pb.send("/api/shop/analytics",{method:"GET",query:{metric,from,to}}).catch(()=>null);
+  const [summary,countries,sources,devices]=await Promise.all([get("summary"),get("countries"),get("sources"),get("devices")]);
   if(STATS_VIEW!=="actions") return;
-  if(!d || d.configured===false){
+  if(!summary || !summary.kpis){
     body.innerHTML=`<div class="ph-panel"><span class="ph-badge">PostHog · EU</span>
       <h3>Аналитика подключается…</h3>
       <p>Как только на сайт пойдёт трафик — здесь появятся посещения, страны, время на сайте, источники, устройства и воронка. Если сообщение висит долго — проверю ключ.</p></div>`;
     return;
   }
-  const k=d.kpis||{};
-  const barList=(arr,unit)=>{
+  const k=summary.kpis;
+  const barList=(arr)=>{
     if(!arr||!arr.length) return '<p class="muted" style="margin:6px 0">Нет данных за период.</p>';
     const max=Math.max(1,...arr.map(x=>x.count));
-    return arr.map(x=>`<div class="bar-row"><span class="lab">${esc(x.name)}</span><span class="track"><i style="width:${Math.round(x.count/max*100)}%"></i></span><span class="num">${x.count}${unit||""}</span></div>`).join("");
+    return arr.map(x=>`<div class="bar-row"><span class="lab">${esc(x.name)}</span><span class="track"><i style="width:${Math.round(x.count/max*100)}%"></i></span><span class="num">${x.count}</span></div>`).join("");
   };
-  const fn=d.funnel||[]; const fmax=Math.max(1,...fn.map(x=>x.n));
+  const fn=summary.funnel||[]; const fmax=Math.max(1,...fn.map(x=>x.n));
   const empty=(k.pageviews||0)===0;
   body.innerHTML=`
    <div class="kpis">
@@ -759,10 +760,10 @@ async function drawActionsStats(){
      <div class="funnel">${fn.map(s=>`<div class="fn"><span>${esc(s.step)}</span><i style="width:${Math.round(s.n/fmax*100)}%"></i><b>${s.n}</b></div>`).join("")}</div>
    </div>
    <div class="two" style="margin-top:16px">
-     <div class="panel"><div class="sec-title" style="margin-top:0">Страны</div>${barList(d.countries)}</div>
-     <div class="panel"><div class="sec-title" style="margin-top:0">Источники</div>${barList(d.sources)}</div>
+     <div class="panel"><div class="sec-title" style="margin-top:0">Страны</div>${barList(countries&&countries.items)}</div>
+     <div class="panel"><div class="sec-title" style="margin-top:0">Источники</div>${barList(sources&&sources.items)}</div>
    </div>
-   <div class="panel"><div class="sec-title" style="margin-top:0">Устройства</div>${barList(d.devices)}</div>
+   <div class="panel"><div class="sec-title" style="margin-top:0">Устройства</div>${barList(devices&&devices.items)}</div>
    ${empty?'<p class="muted" style="margin-top:16px">Пока пусто — данные появятся, как только на сайт зайдут посетители (боты не считаются). Всё подключено и собирается автоматически.</p>':''}`;
 }
 
