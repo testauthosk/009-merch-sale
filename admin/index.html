@@ -381,6 +381,7 @@ async function openEditor(product, defaultCat){
   const isNew=!product;
   let images=[]; if(!isNew) images=await pb.collection("product_images").getFullList({filter:`product="${product.id}"`,sort:"sort"});
   const sizes=(product?.sizes)||["M/L","L/XL"];
+  const stock=(product?.stock&&typeof product.stock==="object"&&!Array.isArray(product.stock))?product.stock:{};
   const ov=document.createElement("div"); ov.className="overlay";
   ov.innerHTML=`<div class="modal">
     <h3>${isNew?"New product":"Edit product card"}</h3>
@@ -393,6 +394,7 @@ async function openEditor(product, defaultCat){
       <div><label>Shown on site<select id="f_active"><option value="true" ${product?.active!==false?"selected":""}>Yes</option><option value="false" ${product?.active===false?"selected":""}>No</option></select></div>
     </div>
     <label>Sizes</label><div class="sizes">${SIZES.map(s=>`<label class="${sizes.includes(s)?"on":""}"><input type="checkbox" value="${s}" ${sizes.includes(s)?"checked":""}>${s}</label>`).join("")}</div>
+    <label>Остаток по размерам, шт. <span class="muted">— пусто = без учёта (∞)</span></label><div class="stocks" style="display:flex;flex-wrap:wrap;gap:10px;margin:4px 0 6px">${SIZES.map(s=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px"><span style="min-width:44px">${s}</span><input type="number" min="0" step="1" data-stk="${s}" value="${s in stock?stock[s]:""}" placeholder="∞" style="width:72px"></label>`).join("")}</div>
     <label>Description<textarea id="f_desc">${esc(product?.description||"")}</textarea></label>
     <label>Photos ${isNew?'<span class="muted">— save first, then add</span>':'<span class="muted">— drag to reorder</span>'}</label>
     <div class="imgs" id="imgs">${images.map(im=>`<div class="imgcell" draggable="true" data-id="${im.id}"><img src="${imgSrc(im)}"><button class="del" data-del="${im.id}">×</button></div>`).join("")}</div>
@@ -406,10 +408,13 @@ async function openEditor(product, defaultCat){
   ov.querySelectorAll(".sizes label").forEach(l=>l.querySelector("input").addEventListener("change",()=>l.classList.toggle("on",l.querySelector("input").checked)));
 
   $("#save",ov).addEventListener("click", async()=>{
+    const chk=[...ov.querySelectorAll(".sizes input:checked")].map(i=>i.value);
+    const stk={};
+    ov.querySelectorAll("[data-stk]").forEach(i=>{ const sz=i.dataset.stk; if(chk.includes(sz)&&i.value.trim()!=="") stk[sz]=Math.max(0,parseInt(i.value,10)||0); });
     const data={ name:$("#f_name",ov).value.trim(), subtitle:$("#f_sub",ov).value.trim(),
       price:Number($("#f_price",ov).value)||0, old_price:Number($("#f_old",ov).value)||null,
       category:$("#f_cat",ov).value, active:$("#f_active",ov).value==="true", description:$("#f_desc",ov).value,
-      sizes:[...ov.querySelectorAll(".sizes input:checked")].map(i=>i.value) };
+      sizes:chk, stock:stk };
     try {
       if(isNew){ const c=(await pb.collection("products").getList(1,1)).totalItems; data.sort=c+1;
         const rec=await pb.collection("products").create(data);
@@ -462,9 +467,36 @@ function orderCard(o){
       <div><h4>Status</h4><select class="ostatus" data-id="${o.id}">${STATUSES.map(s=>`<option ${o.status===s?"selected":""}>${s}</option>`).join("")}</select></div>
     </div></div>`;
 }
+/* Синхронизация остатков: оплаченные (и дальше) заказы списывают остаток по размерам
+   один раз (флаг stock_applied); отменённые после списания — возвращают. Идемпотентно. */
+let _syncing=false;
+async function syncStock(orders){
+  if(_syncing) return; _syncing=true;
+  try{
+    if(!orders) orders=await pb.collection("orders").getFullList({sort:"-created"});
+    const paidStates=["paid","processing","shipped","done"];
+    const toApply=orders.filter(o=>paidStates.includes(o.status)&&!o.stock_applied&&Array.isArray(o.items));
+    const toRestore=orders.filter(o=>o.status==="cancelled"&&o.stock_applied&&Array.isArray(o.items));
+    if(!toApply.length&&!toRestore.length) return;
+    const cache={};
+    const getP=async id=>{ if(!(id in cache)){ try{cache[id]=await pb.collection("products").getOne(id);}catch{cache[id]=null;} } return cache[id]; };
+    const dirty=new Set();
+    const bump=async(items,sign)=>{ for(const it of items){ if(!it||!it.product||!it.size) continue; const p=await getP(it.product); if(!p) continue;
+      const st=(p.stock&&typeof p.stock==="object"&&!Array.isArray(p.stock))?{...p.stock}:{};
+      if(!(it.size in st)) continue; // размер без учёта — пропускаем
+      st[it.size]=Math.max(0,(Number(st[it.size])||0)+sign*(Number(it.qty)||1)); p.stock=st; dirty.add(it.product); } };
+    for(const o of toApply) await bump(o.items,-1);
+    for(const o of toRestore) await bump(o.items,1);
+    for(const id of dirty) if(cache[id]) await pb.collection("products").update(id,{stock:cache[id].stock});
+    for(const o of toApply) await pb.collection("orders").update(o.id,{stock_applied:true});
+    for(const o of toRestore) await pb.collection("orders").update(o.id,{stock_applied:false});
+  }catch(e){ console.warn("syncStock",e); } finally{ _syncing=false; }
+}
 async function renderOrders(){
   $("#view").innerHTML=`<div class="canvas"><div class="sec-title">Orders <span class="hint">· filter by status · click a card for details</span></div><div id="ow">Loading…</div></div>`;
-  const orders=await pb.collection("orders").getFullList({sort:"-created"});
+  let orders=await pb.collection("orders").getFullList({sort:"-created"});
+  await syncStock(orders);
+  orders=await pb.collection("orders").getFullList({sort:"-created"});
   const counts={all:orders.length}; STATUSES.forEach(s=>counts[s]=orders.filter(o=>o.status===s).length);
   const ow=$("#ow");
   const draw=()=>{

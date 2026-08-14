@@ -19183,7 +19183,9 @@ async function Bm() {
     return (e.items ?? []).map(e => {
         let t = String(e.id),
             n = Number(e.price) || 0,
-            i = a.get(t) ?? [];
+            i = a.get(t) ?? [],
+            sm = e.stock && typeof e.stock === `object` && !Array.isArray(e.stock) ? e.stock : {},
+            sz = Array.isArray(e.sizes) && e.sizes.length ? e.sizes : [`M/L`, `L/XL`];
         return {
             id: t,
             name: String(e.name ?? ``),
@@ -19196,8 +19198,9 @@ async function Bm() {
             category: e.category ?? `t-shirts`,
             description: String(e.description ?? ``),
             images: i,
-            sizes: Array.isArray(e.sizes) && e.sizes.length ? e.sizes : [`M/L`, `L/XL`],
-            soldOut: Array.isArray(r[t]) ? r[t] : []
+            sizes: sz,
+            stock: sm,
+            soldOut: sz.filter(x => x in sm && Number(sm[x]) <= 0)
         }
     })
 }
@@ -21042,21 +21045,22 @@ function xh() {
     }, [r]);
     let d = r.reduce((e, t) => e + t.quantity, 0),
         f = (e, t) => {
+            let s = e.stock && t in e.stock ? Number(e.stock[t]) : Infinity;
             i(n => {
                 let r = n.find(n => n.product.id === e.id && n.size === t);
                 return r ? n.map(e => e === r ? {
                     ...e,
-                    quantity: e.quantity + 1
+                    quantity: Math.min(s, e.quantity + 1)
                 } : e) : [...n, {
                     product: e,
                     size: t,
-                    quantity: 1
+                    quantity: Math.min(s, 1)
                 }]
             }), o(!0)
         },
         p = (e, t, n) => i(r => r.map(r => r.product.id === e && r.size === t ? {
             ...r,
-            quantity: Math.max(0, r.quantity + n)
+            quantity: Math.max(0, Math.min(r.product.stock && t in r.product.stock ? Number(r.product.stock[t]) : Infinity, r.quantity + n))
         } : r).filter(e => e.quantity > 0)),
         m = (e, t) => i(n => n.filter(n => n.product.id !== e || n.size !== t)),
         h = () => i([]),
