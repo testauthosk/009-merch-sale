@@ -20687,6 +20687,7 @@ function yh({
                             return
                         }
                         u(!0), m(``);
+                        try{window.posthog&&window.posthog.__loaded&&window.posthog.capture("begin_checkout",{value:g,currency:a,items:e.length})}catch(_){}
                         try {
                             let n = `009-` + Math.random().toString(36).slice(2, 8).toUpperCase(),
                                 {
@@ -21045,6 +21046,7 @@ function xh() {
     }, [r]);
     let d = r.reduce((e, t) => e + t.quantity, 0),
         f = (e, t) => {
+            try{window.posthog&&window.posthog.__loaded&&window.posthog.capture("add_to_cart",{product:e.name,size:t})}catch(_){}
             let s = e.stock && t in e.stock ? Number(e.stock[t]) : Infinity;
             i(n => {
                 let r = n.find(n => n.product.id === e.id && n.size === t);

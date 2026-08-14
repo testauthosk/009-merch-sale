@@ -188,6 +188,17 @@
   .funnel .fn i { display:block; height:22px; background:linear-gradient(90deg,#ebcc00,#9c8f22); opacity:.45; border-radius:2px; }
   .funnel .fn b { color:var(--muted); font-weight:400; text-align:right; }
   @media(max-width:600px){ .stats-head { flex-direction:column; align-items:stretch; } .period-wrap { justify-content:space-between; } }
+  /* world map */
+  .panel-head { display:flex; align-items:center; gap:12px; }
+  .panel-head .sec-title { margin:0; flex:1; }
+  .wmap-wrap { position:relative; }
+  .wmap { width:100%; height:auto; display:block; background:radial-gradient(120% 120% at 50% 20%, #0d0d10, #050506); border:1px solid var(--line); }
+  .wmap path { cursor:pointer; transition:fill .12s, stroke .12s; }
+  .wmap-tip { position:absolute; display:none; background:#000; border:1px solid var(--yellow); color:#fff; font-size:12px; padding:6px 10px; pointer-events:none; z-index:5; white-space:nowrap; box-shadow:0 6px 18px rgba(0,0,0,.6); }
+  .wmap-tip b { color:var(--yellow); }
+  .wmap-legend { display:flex; align-items:center; gap:8px; margin-top:9px; font-size:11px; color:var(--muted); }
+  .wmap-legend i { flex:0 0 130px; height:8px; background:linear-gradient(90deg,#2a2718,#ebcc00); border:1px solid var(--line); }
+  .wmap-legend .wmap-total { margin-left:auto; color:var(--fg); }
 </style>
 </head>
 <body>
@@ -727,12 +738,44 @@ function applyPeriod(){
 }
 
 const fmtDur=s=>{ s=Math.round(Number(s)||0); return s>=60 ? Math.floor(s/60)+"м "+(s%60)+"с" : s+"с"; };
+// --- интерактивная карта мира (d3-geo + world-atlas, рендер в SVG вручную) ---
+let COUNTRIES_VIEW="map", _geo=null;
+const CNAME_ALIAS={ "United States":"United States of America","USA":"United States of America","Czech Republic":"Czechia","South Korea":"South Korea","North Korea":"North Korea","Russia":"Russia","Bosnia and Herzegovina":"Bosnia and Herz.","Dominican Republic":"Dominican Rep.","Democratic Republic of the Congo":"Dem. Rep. Congo","Republic of the Congo":"Congo","Ivory Coast":"Côte d'Ivoire","Central African Republic":"Central African Rep.","South Sudan":"S. Sudan","Equatorial Guinea":"Eq. Guinea","Western Sahara":"W. Sahara","North Macedonia":"North Macedonia" };
+const normName=n=>CNAME_ALIAS[n]||n;
+async function loadGeo(){
+  if(_geo) return _geo;
+  const [d3,tj,topo]=await Promise.all([
+    import("https://esm.sh/d3-geo@3"),
+    import("https://esm.sh/topojson-client@3"),
+    fetch("https://esm.sh/world-atlas@2/countries-110m.json").then(r=>r.json())
+  ]);
+  _geo={ d3, fc: tj.feature(topo, topo.objects.countries) };
+  return _geo;
+}
+async function renderWorldMap(el, dataArr){
+  el.innerHTML='<p class="muted" style="padding:10px 0">Загрузка карты…</p>';
+  let geo; try{ geo=await loadGeo(); }catch(e){ el.innerHTML='<p class="muted">Карту не удалось загрузить.</p>'; return; }
+  const {d3,fc}=geo, W=920, H=450;
+  const proj=d3.geoNaturalEarth1().fitSize([W,H-8],fc), path=d3.geoPath(proj);
+  const byName={}; let max=0, total=0;
+  dataArr.forEach(x=>{ byName[normName(x.name)]=x.count; if(x.count>max)max=x.count; total+=x.count; });
+  const color=v=>{ if(!v) return '#161618'; const t=max>0?v/max:0, a=[42,39,24], b=[235,204,0]; return 'rgb('+a.map((s,i)=>Math.round(s+(b[i]-s)*(0.4+0.6*t))).join(',')+')'; };
+  const paths=fc.features.map(f=>{ const d=path(f); if(!d) return ''; const nm=f.properties.name, v=byName[nm]||0; return `<path d="${d}" fill="${color(v)}" stroke="#0a0a0b" stroke-width="0.4" data-name="${esc(nm)}" data-v="${v}"/>`; }).join('');
+  el.innerHTML=`<div class="wmap-wrap"><svg viewBox="0 0 ${W} ${H}" class="wmap" preserveAspectRatio="xMidYMid meet">${paths}</svg><div class="wmap-tip" id="wmap-tip"></div></div>
+    <div class="wmap-legend"><span>меньше</span><i></i><span>больше визитов</span><span class="wmap-total">Всего визитов: ${total} · стран: ${dataArr.length}</span></div>`;
+  const wrap=el.querySelector('.wmap-wrap'), tip=el.querySelector('#wmap-tip');
+  wrap.querySelectorAll('path').forEach(p=>{
+    const on=e=>{ const v=+p.dataset.v; p.style.stroke='#fff'; p.style.strokeWidth='1'; p.parentNode.appendChild(p); tip.style.display='block'; tip.innerHTML=`<b>${p.dataset.name}</b> — ${v>0?v+' визит(ов)':'нет данных'}`; const r=wrap.getBoundingClientRect(); let x=e.clientX-r.left+14, y=e.clientY-r.top+14; if(x>r.width-160)x-=175; tip.style.left=x+'px'; tip.style.top=y+'px'; };
+    p.addEventListener('mousemove',on);
+    p.addEventListener('mouseleave',()=>{ p.style.stroke='#0a0a0b'; p.style.strokeWidth='0.4'; tip.style.display='none'; });
+  });
+}
 async function drawActionsStats(){
   const body=$("#stats-body");
   body.innerHTML='<p class="muted" style="padding:16px 0">Загрузка аналитики…</p>';
   const {start,end,label}=periodInfo();
   const from=ymd(start), to=ymd(end);
-  const get=(metric)=>pb.send("/api/shop/analytics",{method:"GET",query:{metric,from,to,_:Date.now()}}).catch(()=>null); // _ = анти-кэш, всегда свежие данные
+  const get=(metric)=>pb.send("/api/shop/analytics",{method:"GET",query:{metric,from,to,_:Date.now()}}).catch(()=>null);
   const [summary,countries,sources,devices]=await Promise.all([get("summary"),get("countries"),get("sources"),get("devices")]);
   if(STATS_VIEW!=="actions") return;
   if(!summary || !summary.kpis){
@@ -749,6 +792,7 @@ async function drawActionsStats(){
   };
   const fn=summary.funnel||[]; const fmax=Math.max(1,...fn.map(x=>x.n));
   const empty=(k.pageviews||0)===0;
+  const cdata=(countries&&countries.items)||[];
   body.innerHTML=`
    <div class="kpis">
      <div class="kpi"><div class="k-label">Посещения · ${label}</div><div class="k-val">${k.pageviews||0}</div><div class="k-sub">просмотры страниц</div></div>
@@ -756,15 +800,25 @@ async function drawActionsStats(){
      <div class="kpi"><div class="k-label">Ср. время на сайте</div><div class="k-val">${fmtDur(k.avg_seconds)}</div><div class="k-sub">за сессию</div></div>
      <div class="kpi"><div class="k-label">Конверсия</div><div class="k-val">${k.conversion||0}%</div><div class="k-sub">визит → оплата</div></div>
    </div>
+   <div class="panel"><div class="panel-head"><div class="sec-title">География посещений</div>
+       <div class="seg seg-sm" id="cmode"><span class="seg-pill"></span><button data-c="map" class="${COUNTRIES_VIEW==="map"?"active":""}">Карта</button><button data-c="list" class="${COUNTRIES_VIEW==="list"?"active":""}">Список</button></div>
+     </div>
+     <div id="countries-view" style="margin-top:12px"></div>
+   </div>
    <div class="panel"><div class="sec-title" style="margin-top:0">Воронка покупки</div>
      <div class="funnel">${fn.map(s=>`<div class="fn"><span>${esc(s.step)}</span><i style="width:${Math.round(s.n/fmax*100)}%"></i><b>${s.n}</b></div>`).join("")}</div>
    </div>
    <div class="two" style="margin-top:16px">
-     <div class="panel"><div class="sec-title" style="margin-top:0">Страны</div>${barList(countries&&countries.items)}</div>
      <div class="panel"><div class="sec-title" style="margin-top:0">Источники</div>${barList(sources&&sources.items)}</div>
+     <div class="panel"><div class="sec-title" style="margin-top:0">Устройства</div>${barList(devices&&devices.items)}</div>
    </div>
-   <div class="panel"><div class="sec-title" style="margin-top:0">Устройства</div>${barList(devices&&devices.items)}</div>
    ${empty?'<p class="muted" style="margin-top:16px">Пока пусто — данные появятся, как только на сайт зайдут посетители (боты не считаются). Всё подключено и собирается автоматически.</p>':''}`;
+  // countries: карта / список
+  const cview=$("#countries-view"), cseg=$("#cmode");
+  const renderC=()=>{ if(COUNTRIES_VIEW==="map") renderWorldMap(cview,cdata); else cview.innerHTML=barList(cdata); };
+  if(cseg){ requestAnimationFrame(()=>_pill(cseg));
+    cseg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ if(COUNTRIES_VIEW===b.dataset.c)return; COUNTRIES_VIEW=b.dataset.c; cseg.querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b)); _pill(cseg); renderC(); })); }
+  renderC();
 }
 
 /* ---------- notify recipients (кто видит новые заказы в боте) ---------- */
