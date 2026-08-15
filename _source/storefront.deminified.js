@@ -19643,9 +19643,9 @@ function ch({
                         },
                         children: e.label
                     }, e.label))
-                }), (0, Z.jsx)(`div`, {
+                }), (0, Z.jsxs)(`div`, {
                     className: `mobile-menu__footer`,
-                    children: (0, Z.jsx)(`a`, {
+                    children: [(0, Z.jsx)(`a`, {
                         href: `https://instagram.com/009couture`,
                         target: `_blank`,
                         rel: `noopener noreferrer`,
@@ -19655,7 +19655,23 @@ function ch({
                             className: `instagram-glyph`,
                             "aria-hidden": `true`
                         })
-                    })
+                    }), (0, Z.jsx)(`a`, {
+                        href: `https://t.me/couture009`,
+                        target: `_blank`,
+                        rel: `noopener noreferrer`,
+                        className: `mobile-menu__ig`,
+                        "aria-label": `Telegram`,
+                        children: (0, Z.jsx)(`svg`, {
+                            viewBox: `0 0 24 24`,
+                            width: 24,
+                            height: 24,
+                            fill: `currentColor`,
+                            "aria-hidden": `true`,
+                            children: (0, Z.jsx)(`path`, {
+                                d: `M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.57 7.39c-.12.53-.43.66-.87.41l-2.4-1.77-1.16 1.11c-.13.13-.24.24-.49.24l.17-2.43 4.44-4.01c.19-.17-.04-.27-.3-.1L9.28 13.47l-2.38-.74c-.52-.16-.53-.52.11-.77l9.3-3.58c.43-.16.81.1.67.72z`
+                            })
+                        })
+                    })]
                 })]
             })
         })]
@@ -19743,6 +19759,22 @@ function uh() {
                     className: `instagram-glyph`,
                     "aria-hidden": `true`
                 })
+            }), (0, Z.jsx)(`a`, {
+                className: `instagram instagram--brand`,
+                href: `https://t.me/couture009`,
+                target: `_blank`,
+                rel: `noopener noreferrer`,
+                "aria-label": `Telegram`,
+                children: (0, Z.jsx)(`svg`, {
+                    viewBox: `0 0 24 24`,
+                    width: 24,
+                    height: 24,
+                    fill: `currentColor`,
+                    "aria-hidden": `true`,
+                    children: (0, Z.jsx)(`path`, {
+                        d: `M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.57 7.39c-.12.53-.43.66-.87.41l-2.4-1.77-1.16 1.11c-.13.13-.24.24-.49.24l.17-2.43 4.44-4.01c.19-.17-.04-.27-.3-.1L9.28 13.47l-2.38-.74c-.52-.16-.53-.52.11-.77l9.3-3.58c.43-.16.81.1.67.72z`
+                    })
+                })
             })]
         }), (0, Z.jsxs)(`div`, {
             className: `footer-columns`,
@@ -19787,6 +19819,22 @@ function uh() {
                     children: (0, Z.jsx)(`span`, {
                         className: `instagram-glyph`,
                         "aria-hidden": `true`
+                    })
+                }), (0, Z.jsx)(`a`, {
+                    className: `instagram instagram--contacts`,
+                    href: `https://t.me/couture009`,
+                    target: `_blank`,
+                    rel: `noopener noreferrer`,
+                    "aria-label": `Telegram`,
+                    children: (0, Z.jsx)(`svg`, {
+                        viewBox: `0 0 24 24`,
+                        width: 24,
+                        height: 24,
+                        fill: `currentColor`,
+                        "aria-hidden": `true`,
+                        children: (0, Z.jsx)(`path`, {
+                            d: `M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.57 7.39c-.12.53-.43.66-.87.41l-2.4-1.77-1.16 1.11c-.13.13-.24.24-.49.24l.17-2.43 4.44-4.01c.19-.17-.04-.27-.3-.1L9.28 13.47l-2.38-.74c-.52-.16-.53-.52.11-.77l9.3-3.58c.43-.16.81.1.67.72z`
+                        })
                     })
                 })]
             })]

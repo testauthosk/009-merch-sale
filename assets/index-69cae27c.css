@@ -29,3 +29,10 @@
 .legal-block h2{font-size:15px;margin:0 0 14px;text-transform:uppercase;letter-spacing:.08em;color:var(--yellow)}
 .legal-block p{font-size:14px;line-height:1.7;color:rgba(255,255,255,.82);margin:0 0 12px}
 .legal-block p:last-child{margin-bottom:0}
+
+/* social: +telegram next to instagram, icons a bit bigger (Igor 2026-08-15) */
+.instagram,.mobile-menu__ig{width:32px;height:32px}
+.instagram-glyph{transform:scale(1.3)}
+.instagram svg,.mobile-menu__ig svg{width:26px;height:26px;display:block}
+.mobile-menu__footer{display:flex;align-items:center;gap:12px}
+.footer-brand .instagram+.instagram{margin-left:6px}
