@@ -19766,7 +19766,7 @@ function uh() {
                 children: [(0, Z.jsx)(`h3`, {
                     children: `Help`
                 }), (0, Z.jsx)(`a`, {
-                    href: Zm(`/`),
+                    href: Zm(`/shipping`),
                     children: `Shipping`
                 }), (0, Z.jsx)(`a`, {
                     href: Zm(`/size-guide`),
@@ -19835,6 +19835,54 @@ function Sg() {
                     loading: `lazy`
                 })]
             })]
+        }), (0, Z.jsx)(uh, {})]
+    })
+}
+
+function ShippingPage() {
+    let SR = [
+        [`Shipping & delivery`, [
+            `We ship your order with Nova Post. Orders are processed within 1–3 business days, and you receive a tracking number as soon as your parcel is on its way.`,
+            `Delivery usually takes about 3–7 business days, depending on your country, and the exact time and cost are shown at checkout. If your country is not covered by Nova Post, we contact you to agree the delivery method and cost — no payment is taken until then. All prices on this site include VAT.`,
+            `In every case we deliver no later than 30 days after your order is placed. Risk of loss or damage passes to you once you, or a person you nominate other than the carrier, receive the goods.`
+        ]],
+        [`Returns — your 14-day right of withdrawal`, [
+            `If you are a consumer in the European Union, you have the right to withdraw from your purchase within 14 days, without giving any reason. The period ends 14 days after the day you, or a nominated third party other than the carrier, receive the goods — for orders delivered in parts, the day you receive the last item.`,
+            `To withdraw, let us know your decision before the 14 days are up: email info@009couture.com with your order number, or use the model withdrawal form below. Any clear statement is enough.`,
+            `After you notify us, send the goods back without undue delay and no later than 14 days. Please return items in their original condition with tags attached. You may examine and try items on as you would in a shop, but you are responsible for any loss in value that results from handling beyond that.`,
+            `You bear the direct cost of returning the goods. Email info@009couture.com and we will send you the return address and instructions.`
+        ]],
+        [`Refunds`, [
+            `We refund all payments received from you, including the cost of standard delivery, within 14 days of being informed of your decision to withdraw. We may withhold the refund until we have received the goods back, or you have supplied proof of sending them — whichever comes first.`,
+            `Refunds are made using the same payment method you used for the order, at no extra cost to you.`
+        ]],
+        [`Exceptions`, [
+            `By law the 14-day withdrawal right does not apply to a few types of goods — for example items made to your specifications or clearly personalised, and sealed goods that cannot be returned for health or hygiene reasons once unsealed. Our standard clothing and accessories — t-shirts, caps, shorts, hoodies — are fully returnable.`
+        ]],
+        [`Model withdrawal form`, [
+            `To 009 Couture (info@009couture.com): I hereby give notice that I withdraw from my contract of sale of the following goods — [describe the goods]. Ordered on / received on — [date]. Name of consumer — [name]. Address of consumer — [address]. Date — [date].`
+        ]],
+        [`Questions & complaints`, [
+            `Contact us any time at info@009couture.com. As an EU consumer you may also contact the consumer-protection authority in your country or an approved alternative dispute resolution (ADR) body.`
+        ]]
+    ];
+    return (0, Z.jsxs)(`main`, {
+        className: `legal-page`,
+        children: [(0, Z.jsxs)(`div`, {
+            className: `legal-inner`,
+            children: [(0, Z.jsx)(`h1`, {
+                children: `Shipping & Returns`
+            }), (0, Z.jsx)(`p`, {
+                className: `legal-lead`,
+                children: `How we ship your order, and your rights to return it under EU consumer law.`
+            }), SR.map((blk, i) => (0, Z.jsxs)(`section`, {
+                className: `legal-block`,
+                children: [(0, Z.jsx)(`h2`, {
+                    children: blk[0]
+                }), blk[1].map((para, j) => (0, Z.jsx)(`p`, {
+                    children: para
+                }, `p${i}_${j}`))]
+            }, `sec${i}`))]
         }), (0, Z.jsx)(uh, {})]
     })
 }
@@ -21067,7 +21115,7 @@ function xh() {
         m = (e, t) => i(n => n.filter(n => n.product.id !== e || n.size !== t)),
         h = () => i([]),
         g = e.match(/^\/catalog\/([^/]+)$/),
-        _ = e === `/catalog` ? `catalog` : e === `/checkout` ? `checkout` : e === `/order` ? `order` : e === `/size-guide` ? `size-guide` : g ? `product-${g[1]}` : `home`;
+        _ = e === `/catalog` ? `catalog` : e === `/checkout` ? `checkout` : e === `/order` ? `order` : e === `/size-guide` ? `size-guide` : e === `/shipping` ? `shipping` : g ? `product-${g[1]}` : `home`;
     return (0, Z.jsx)(th.Provider, {
         value: {
             code: s,
@@ -21108,7 +21156,7 @@ function xh() {
                     }) : e === `/catalog` ? (0, Z.jsx)(ph, {
                         cartCount: d,
                         openCart: () => o(!0)
-                    }) : e === `/size-guide` ? (0, Z.jsx)(Sg, {}) : g ? (0, Z.jsx)(hh, {
+                    }) : e === `/size-guide` ? (0, Z.jsx)(Sg, {}) : e === `/shipping` ? (0, Z.jsx)(ShippingPage, {}) : g ? (0, Z.jsx)(hh, {
                         slug: decodeURIComponent(g[1]),
                         cartCount: d,
                         openCart: () => o(!0),
