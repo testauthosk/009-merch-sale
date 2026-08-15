@@ -19200,7 +19200,7 @@ async function Bm() {
             images: i,
             sizes: sz,
             stock: sm,
-            soldOut: sz.filter(x => x in sm && Number(sm[x]) <= 0)
+            soldOut: Array.isArray(r[t]) ? r[t] : sz.filter(x => x in sm && Number(sm[x]) <= 0)
         }
     })
 }
